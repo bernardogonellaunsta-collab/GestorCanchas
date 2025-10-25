@@ -5,7 +5,7 @@ public class TestConexion {
         try (Connection cn = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/gestor_deportivo?useSSL=false&serverTimezone=UTC",
                 "root", "")) {
-            System.out.println("✅ Conexión exitosa");
+            System.out.println("Conexion exitosa");
         } catch (SQLException e) {
             System.out.println("❌ Error: " + e.getMessage());
         }
