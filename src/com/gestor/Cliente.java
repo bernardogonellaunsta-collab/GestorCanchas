@@ -27,6 +27,6 @@ public class Cliente implements Serializable {
 
     @Override
     public String toString() {
-        return nombreCliente + " (" + telefono + ")";
+        return nombreCliente;
     }
 }

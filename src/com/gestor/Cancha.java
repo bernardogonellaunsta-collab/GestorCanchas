@@ -1,5 +1,5 @@
 package com.gestor;
-
+    
 
 import java.io.Serializable;
 
@@ -33,7 +33,6 @@ public class Cancha implements Serializable {
     @Override
 
     public String toString() {
-// Muestre solo lo necesario. Ajuste a gusto.
-        return nombre + " — $" + String.format("%,.0f", precioPorHora);
+        return nombre;
     }
 }
