@@ -7,7 +7,7 @@ public class GestorDeportivoApp {
 
     public static void main(String[] args) {
         // --- Lógica de ejemplo existente ---
-        Cancha c1 = new Cancha(1, "Cancha 1", "Fútbol 5", 12000.0);
+        /*Cancha c1 = new Cancha(1, "Cancha 1", "Fútbol 5", 12000.0);
         Cancha c2 = new Cancha(2, "Cancha 2", "Pádel", 10000.0);
         Cliente cli = new Cliente(1, "Juan Pérez", "381-555-000");
 
@@ -20,7 +20,10 @@ public class GestorDeportivoApp {
 
         List<Reserva> hoyR = Reserva.obtenerReservasPorFecha(hoy);
         System.out.println("Reservas de hoy: " + hoyR.size());
-
+        */
+        
+        SetUpDB.verificarYCrearBD();
+        
         // --- Abrir GUI ---
         javax.swing.SwingUtilities.invokeLater(() -> {
             try {

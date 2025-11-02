@@ -668,23 +668,4 @@ public class MainFrame extends JFrame {
         modelReservas.addRow(row);
     }
 
-    private void cargarDatosDeEjemplo() {
-        // Canchas
-        Cancha c1 = new Cancha(1, "Cancha 1", "Fútbol 5", 12000.0);
-        Cancha c2 = new Cancha(2, "Cancha 2", "Pádel", 10000.0);
-        canchas.add(c1); canchas.add(c2);
-        cmbCancha.addItem(c1); cmbCancha.addItem(c2);
-        cmbCanchaDisp.addItem(c1); cmbCanchaDisp.addItem(c2);
-
-        // Clientes
-        Cliente a = new Cliente(1, "Juan Pérez", "381-555-000");
-        Cliente b = new Cliente(2, "Ana Díaz", "381-555-111");
-        clientes.add(a); clientes.add(b);
-        cmbCliente.addItem(a); cmbCliente.addItem(b);
-    }
-
-    // Punto de entrada opcional
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainFrame().setVisible(true));
-    }
 }
