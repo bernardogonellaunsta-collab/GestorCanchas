@@ -1,11 +1,6 @@
-package com.gestor.presentacion;
+package com.gestor.presentacion; // <-- PAQUETE ACTUALIZADO
 
-import com.gestor.negocio.Cancha;
-import com.gestor.negocio.Cliente;
-import com.gestor.datos.ConexionDB;
-import com.gestor.negocio.Reserva;
-import com.gestor.negocio.ReservaFija;
-import com.gestor.negocio.ReservaSimple;
+// Imports de la GUI (Swing)
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -14,27 +9,39 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+// Imports de las OTRAS CAPAS
+import com.gestor.datos.CanchaDAO;
+import com.gestor.datos.ClienteDAO;
+import com.gestor.datos.ReservaDAO;
+import com.gestor.negocio.Cancha;
+import com.gestor.negocio.Cliente;
+import com.gestor.negocio.Reserva;
+import com.gestor.negocio.ReservaFija;
+import com.gestor.negocio.ReservaSimple;
+
 /**
- * GUI simple para conectar con las clases del proyecto entregado (sin agregar nuevas clases de dominio).
- *
- * Pestañas:
- *  - Reservas (crear/cancelar/listar y calcular costo)
- *  - Disponibilidad (consultar horas libres por fecha/cancha)
- *  - Canchas (alta en memoria para poblar combos)
- *  - Clientes (alta en memoria para poblar combos)
+ * GUI principal (Capa de Presentación).
+ * NO contiene lógica de negocio ni SQL.
+ * Delega todas las operaciones de datos a las clases DAO (Capa de Datos).
+ * Maneja los objetos de la Capa de Negocio (Cliente, Cancha, Reserva).
  */
 public class MainFrame extends JFrame {
 
-    // ---- Datos en memoria para la GUI ----
+    // ---- Datos en memoria para la GUI (cacheados de la BD) ----
     private final List<Cancha> canchas = new ArrayList<>();
     private final List<Cliente> clientes = new ArrayList<>();
+
+    // ---- Atributos para las capas de datos ----
+    private final ClienteDAO clienteDAO;
+    private final CanchaDAO canchaDAO;
+    private final ReservaDAO reservaDAO;
 
     // ---- Contenedor principal ----
     private JTabbedPane tabs;
 
     // ---- Reservas ----
     private JPanel panelReservas;
-    public JTextField txtIdReserva;
+    //public JTextField txtIdReserva;
     public JComboBox<Cancha> cmbCancha;
     public JComboBox<Cliente> cmbCliente;
     public JFormattedTextField ftfFecha; // dd/MM/yyyy
@@ -63,7 +70,7 @@ public class MainFrame extends JFrame {
 
     // ---- Canchas ----
     private JPanel panelCanchas;
-    public JTextField txtIdCancha;
+    //public JTextField txtIdCancha;
     public JTextField txtNombreCancha;
     public JTextField txtDeporte;
     public JFormattedTextField ftfPrecioHora;
@@ -73,7 +80,7 @@ public class MainFrame extends JFrame {
 
     // ---- Clientes ----
     private JPanel panelClientes;
-    //public JTextField txtIdCliente;
+    //public JTextField txtIdCliente; // El ID ahora es autogenerado
     public JTextField txtNombreCliente;
     public JTextField txtTelefono;
     public JButton btnAgregarCliente;
@@ -88,11 +95,19 @@ public class MainFrame extends JFrame {
 
     private static final java.text.NumberFormat F_MONEDA_AR
             = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("es", "AR"));
+
     public MainFrame() {
         setTitle("Gestor Deportivo");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 680);
         setLocationRelativeTo(null);
+        
+        // ---- INICIALIZACIÓN DE CAPAS ----
+        // 1. Inicializa los DAO (Capa de Datos)
+        this.clienteDAO = new ClienteDAO();
+        this.canchaDAO = new CanchaDAO();
+        this.reservaDAO = new ReservaDAO();
+        // ----------------------------------
 
         tabs = new JTabbedPane();
         buildPanelReservas();
@@ -101,87 +116,73 @@ public class MainFrame extends JFrame {
         buildPanelClientes();
 
         setContentPane(tabs);
+        
+        // 2. Carga datos iniciales usando los DAO
         cargarClientesDesdeDB();
         cargarCanchasDesdeDB();
-        cargarReservasDesdeDB();
+        // Carga las reservas del día actual al iniciar
+        cargarReservasDelDia(LocalDate.now());
     }
-    
-      private void cargarClientesDesdeDB() {
+
+    /**
+     * (REFACTORIZADO)
+     * Carga los clientes desde la capa de datos (DAO) y puebla la GUI.
+     * Ya no contiene SQL.
+     */
+    private void cargarClientesDesdeDB() {
         // Limpio primero las estructuras en memoria y la tabla
         clientes.clear();
         cmbCliente.removeAllItems();
         modelClientes.setRowCount(0);
 
-        String sql = "SELECT id, nombre, telefono FROM cliente ORDER BY nombre";
+        // 1. Pide los clientes al DAO
+        List<Cliente> clientesDesdeDB = clienteDAO.obtenerTodos();
 
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.Statement st = cn.createStatement(); java.sql.ResultSet rs = st.executeQuery(sql)) {
-
-            while (rs.next()) {
-                int id = rs.getInt("id");
-                String nombre = rs.getString("nombre");
-                String telefono = rs.getString("telefono");
-
-                // 1) creo el objeto de mi modelo
-                Cliente cli = new Cliente(id, nombre, telefono);
-
-                // 2) lo guardo en la lista interna
-                clientes.add(cli);
-
-                // 3) lo muestro en el combo de Reservas
-                cmbCliente.addItem(cli);
-
-                // 4) lo muestro en la tabla de la pestaña Clientes
-                modelClientes.addRow(new Object[]{id, nombre, telefono});
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar los clientes: " + e.getMessage());
+        // 2. La GUI se encarga de mostrar los datos
+        for (Cliente cli : clientesDesdeDB) {
+            clientes.add(cli);
+            cmbCliente.addItem(cli);
+            modelClientes.addRow(new Object[]{cli.getIdCliente(), cli.getNombreCliente(), cli.getTelefono()});
         }
     }
-      private void cargarCanchasDesdeDB() {
+
+    /**
+     * (REFACTORIZADO)
+     * Carga las canchas desde la capa de datos (DAO) y puebla la GUI.
+     * Ya no contiene SQL.
+     */
+    private void cargarCanchasDesdeDB() {
         // limpiar estructuras y tablas
         canchas.clear();
         cmbCancha.removeAllItems();
         cmbCanchaDisp.removeAllItems();
         modelCanchas.setRowCount(0);
 
-        String sql = "SELECT id_cancha, nombre, deporte, precio_por_hora FROM cancha ORDER BY nombre";
+        // 1. Pide las canchas al DAO
+        List<Cancha> canchasDesdeDB = canchaDAO.obtenerTodas();
 
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.Statement st = cn.createStatement(); java.sql.ResultSet rs = st.executeQuery(sql)) {
-
-            while (rs.next()) {
-                int id = rs.getInt("id_cancha");
-                String nom = rs.getString("nombre");
-                String dep = rs.getString("deporte");
-                double precio = rs.getDouble("precio_por_hora");
-
-                Cancha c = new Cancha(id, nom, dep, precio);
-
-                // lista en memoria
-                canchas.add(c);
-                // combo de reservas
-                cmbCancha.addItem(c);
-                // combo de disponibilidad
-                cmbCanchaDisp.addItem(c);
-                // tabla de la pestaña Canchas
-                modelCanchas.addRow(new Object[]{id, nom, dep, precio});
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar las canchas: " + e.getMessage());
+        // 2. La GUI muestra los datos
+        for (Cancha c : canchasDesdeDB) {
+            canchas.add(c);
+            cmbCancha.addItem(c);
+            cmbCanchaDisp.addItem(c);
+            modelCanchas.addRow(new Object[]{c.getIdCancha(), c.getNombre(), c.getDeporte(), c.getPrecioPorHora()});
         }
     }
 
     // -----------------------------------------------------------
-    // Construcción de pestaña: RESERVAS
+    // Construcción de pestañas (Sin cambios)
     // -----------------------------------------------------------
     private void buildPanelReservas() {
         panelReservas = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        txtIdReserva = new JTextField(10);
-        txtIdReserva.setText( String.valueOf(generarId()) );
+        //txtIdReserva = new JTextField(10);
+        // El ID de reserva es autogenerado por la BD, lo deshabilitamos
+        /*txtIdReserva.setText("(Automático)");
+        txtIdReserva.setEnabled(false); */
+        
         cmbCancha = new JComboBox<>();
         cmbCliente = new JComboBox<>();
         ftfFecha = new JFormattedTextField(F_FECHA.toFormat());
@@ -203,7 +204,7 @@ public class MainFrame extends JFrame {
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
 
         // Fila 0..N
-        addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
+        //addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
         addRow(form, gc, 1, new JLabel("Cancha:"), cmbCancha);
         addRow(form, gc, 2, new JLabel("Cliente:"), cmbCliente);
         addRow(form, gc, 3, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha);
@@ -248,9 +249,6 @@ public class MainFrame extends JFrame {
         tabs.addTab("Reservas", panelReservas);
     }
 
-    // -----------------------------------------------------------
-    // Construcción de pestaña: DISPONIBILIDAD
-    // -----------------------------------------------------------
     private void buildPanelDisponibilidad() {
         panelDisponibilidad = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
@@ -277,22 +275,22 @@ public class MainFrame extends JFrame {
         tabs.addTab("Disponibilidad", panelDisponibilidad);
     }
 
-    // -----------------------------------------------------------
-    // Construcción de pestaña: CANCHAS (en memoria)
-    // -----------------------------------------------------------
     private void buildPanelCanchas() {
         panelCanchas = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        txtIdCancha = new JTextField(8);
+        /*txtIdCancha = new JTextField(8);
+        txtIdCancha.setText("(Automático)");
+        txtIdCancha.setEnabled(false); // ID es autogenerado*/
+        
         txtNombreCancha = new JTextField(14);
         txtDeporte = new JTextField(10);
         ftfPrecioHora = new JFormattedTextField(java.text.NumberFormat.getNumberInstance());
         ftfPrecioHora.setColumns(8);
         btnAgregarCancha = new JButton("Agregar cancha");
 
-        addRow(form, gc, 0, new JLabel("ID:"), txtIdCancha);
+        //addRow(form, gc, 0, new JLabel("ID:"), txtIdCancha);
         addRow(form, gc, 1, new JLabel("Nombre:"), txtNombreCancha);
         addRow(form, gc, 2, new JLabel("Deporte:"), txtDeporte);
         addRow(form, gc, 3, new JLabel("Precio/hora:"), ftfPrecioHora);
@@ -311,14 +309,12 @@ public class MainFrame extends JFrame {
         tabs.addTab("Canchas", panelCanchas);
     }
 
-    // -----------------------------------------------------------
-    // Construcción de pestaña: CLIENTES (en memoria)
-    // -----------------------------------------------------------
     private void buildPanelClientes() {
         panelClientes = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
+        // El ID es autogenerado, no es necesario un campo
         //txtIdCliente = new JTextField(8);
         txtNombreCliente = new JTextField(18);
         txtTelefono = new JTextField(12);
@@ -343,10 +339,16 @@ public class MainFrame extends JFrame {
     }
 
     // -----------------------------------------------------------
-    // Handlers de NEGOCIO (conexión a clases existentes)
+    // Handlers de NEGOCIO (REFACTORIZADOS - usan DAO)
     // -----------------------------------------------------------
 
+    /**
+     * (REFACTORIZADO)
+     * Crea un objeto de negocio (Reserva) y lo pasa al DAO para guardarlo.
+     * Ya no contiene SQL.
+     */
     private void onRegistrarReserva() {
+        // 1. Obtener datos de la GUI
         Cancha cancha = (Cancha) cmbCancha.getSelectedItem();
         Cliente cliente = (Cliente) cmbCliente.getSelectedItem();
 
@@ -357,132 +359,98 @@ public class MainFrame extends JFrame {
 
         LocalDate fecha = parseFecha(ftfFecha.getText());
         LocalTime hora = parseHora(ftfHora.getText());
+        if (fecha == null || hora == null) {
+             JOptionPane.showMessageDialog(this, "Fecha u hora inválida.");
+             return;
+        }
+        
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
         int duracion = (int) spDuracion.getValue();
 
-        String tipo = rbSimple.isSelected() ? "Simple" : "Fija";
-        LocalDate fechaFin = null;
-        String diaSemana = null;
-        double descuento = 0;
-
-        if (rbFija.isSelected()) {
-            fechaFin = parseFecha(ftfFechaFin.getText());
-            diaSemana = ((DayOfWeek) cmbDiaSemana.getSelectedItem()).name();
-            descuento = ((Number) spDescuento.getValue()).doubleValue();
-        }
-
-        double costo;
+        // 2. Crear el objeto de Negocio (aún no tiene ID)
+        Reserva nuevaReserva;
         if (rbSimple.isSelected()) {
-            ReservaSimple tmp = new ReservaSimple(0, inicio, cancha, cliente, duracion);
-            costo = tmp.calcularCostoTotal();
+            nuevaReserva = new ReservaSimple(0, inicio, cancha, cliente, duracion);
         } else {
-            ReservaFija tmp = new ReservaFija(0, inicio, cancha, cliente,
-                    (DayOfWeek) cmbDiaSemana.getSelectedItem(), fechaFin, descuento);
-            tmp.setDuracionMinutos(duracion);
-            costo = tmp.calcularCostoTotal();
-        }
-
-        // Guardar en la base de datos
-        int idGenerado = -1;
-        String sql = "INSERT INTO reserva (id_cancha, id_cliente, fecha_hora_inicio, duracion_minutos, tipo, fecha_fin, dia_semana, descuento_aplicado, costo_total) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.PreparedStatement ps = cn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setInt(1, cancha.getIdCancha());
-            ps.setInt(2, cliente.getIdCliente());
-            ps.setTimestamp(3, java.sql.Timestamp.valueOf(inicio));
-            ps.setInt(4, duracion);
-            ps.setString(5, tipo);
-            if (fechaFin != null) {
-                ps.setDate(6, java.sql.Date.valueOf(fechaFin));
-            } else {
-                ps.setNull(6, java.sql.Types.DATE);
+            LocalDate fechaFin = parseFecha(ftfFechaFin.getText());
+            if (fechaFin == null) {
+                JOptionPane.showMessageDialog(this, "Debe ingresar una fecha de fin para la reserva fija.");
+                return;
             }
-            ps.setString(7, diaSemana);
-            ps.setDouble(8, descuento);
-            ps.setDouble(9, costo);
-
-            ps.executeUpdate();
-
-            try (java.sql.ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    idGenerado = rs.getInt(1);
-                }
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al guardar la reserva: " + e.getMessage());
-            return;
+            DayOfWeek dia = (DayOfWeek) cmbDiaSemana.getSelectedItem();
+            double descuento = ((Number) spDescuento.getValue()).doubleValue();
+            
+            ReservaFija fija = new ReservaFija(0, inicio, cancha, cliente, dia, fechaFin, descuento);
+            fija.setDuracionMinutos(duracion); // Asegurarse que use la duración del spinner
+            nuevaReserva = fija;
         }
+        
+        // TODO: Aquí debería ir la validación de solapamiento (Capa de Negocio)
+        // boolean solapada = gestorDeNegocio.verificarSolapamiento(nuevaReserva);
+        // if (solapada) { ... }
 
-        // Reflejar en la GUI
+        // 3. Enviar el objeto a la Capa de Datos (DAO)
+        int idGenerado = reservaDAO.registrarReserva(nuevaReserva);
+
+        // 4. Actualizar la GUI si el DAO tuvo éxito
         if (idGenerado != -1) {
-            Object[] row = {
-                idGenerado,
-                cancha.getNombre(),
-                cliente.getNombreCliente(),
-                inicio,
-                inicio.plusMinutes(duracion),
-                tipo,
-                String.format("%.2f", costo)
-            };
-            String inicioStr = inicio.format(F_FECHA_HORA_MOSTRAR);
-            String finStr = inicio.plusMinutes(duracion).format(F_FECHA_HORA_MOSTRAR);
-            String costoStr = F_MONEDA_AR.format(costo);  // ej: $ 50.000,00
-
-            modelReservas.addRow(new Object[]{
-                idGenerado,
-                cancha.getNombre(),
-                cliente.getNombreCliente(),
-                inicioStr,
-                finStr,
-                tipo,
-                costoStr
-            });
+            // El DAO actualizó el ID dentro del objeto 'nuevaReserva'
+            agregarFila(nuevaReserva, rbSimple.isSelected() ? "Simple" : "Fija");
             JOptionPane.showMessageDialog(this, "Reserva guardada correctamente.");
+            // Limpiar campos si se desea
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al guardar la reserva. Verifique la consola.");
         }
     }
-    private void cargarReservasDesdeDB() {
+
+    /**
+     * (REFACTORIZADO)
+     * Carga las reservas del día actual al iniciar la app.
+     * Usa el DAO de Reservas.
+     */
+    private void cargarReservasDelDia(LocalDate fecha) {
         modelReservas.setRowCount(0);
-        String sql = "SELECT r.id_reserva, c.nombre AS cancha, cl.nombre AS cliente, r.fecha_hora_inicio, "
-                + "r.duracion_minutos, r.tipo, r.costo_total "
-                + "FROM reserva r "
-                + "JOIN cancha c ON r.id_cancha = c.id_cancha "
-                + "JOIN cliente cl ON r.id_cliente = cl.id "
-                + "ORDER BY r.fecha_hora_inicio DESC";
-
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.Statement st = cn.createStatement(); java.sql.ResultSet rs = st.executeQuery(sql)) {
-
-            while (rs.next()) {
-                int id = rs.getInt("id_reserva");
-                String cancha = rs.getString("cancha");
-                String cliente = rs.getString("cliente");
-                LocalDateTime inicio = rs.getTimestamp("fecha_hora_inicio").toLocalDateTime();
-                int dur = rs.getInt("duracion_minutos");
-                String tipo = rs.getString("tipo");
-                double costo = rs.getDouble("costo_total");
-
-                Object[] row = {id, cancha, cliente, inicio, inicio.plusMinutes(dur), tipo, String.format("%.2f", costo)};
-                modelReservas.addRow(row);
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al cargar reservas: " + e.getMessage());
+        List<Reserva> lista = reservaDAO.obtenerReservasPorFecha(fecha);
+        for (Reserva r : lista) {
+            String tipo = (r instanceof ReservaFija) ? "Fija" : "Simple";
+            agregarFila(r, tipo);
         }
     }
 
+    /**
+     * (REFACTORIZADO)
+     * Cancela una reserva usando el DAO.
+     */
     private void onCancelarReserva() {
         int row = tblReservas.getSelectedRow();
-        if (row < 0) return;
+        if (row < 0) {
+            JOptionPane.showMessageDialog(this, "Seleccione una reserva de la tabla para cancelar.");
+            return;
+        }
         int id = (int) modelReservas.getValueAt(row, 0);
-        Reserva.cancelarReserva(id);
-        modelReservas.removeRow(row);
+        
+        // Llama al DAO
+        boolean exito = reservaDAO.cancelarReserva(id);
+        
+        if (exito) {
+            modelReservas.removeRow(row);
+            JOptionPane.showMessageDialog(this, "Reserva ID " + id + " cancelada.");
+        } else {
+            JOptionPane.showMessageDialog(this, "No se pudo cancelar la reserva.");
+        }
     }
 
+    /**
+     * (REFACTORIZADO)
+     * Lista las reservas de un día específico usando el DAO.
+     */
     private void onListarReservasDia() {
         LocalDate fecha = parseFecha(ftfFecha.getText());
-        java.util.List<Reserva> lista = Reserva.obtenerReservasPorFecha(fecha);
+        if (fecha == null) return;
+        
+        // Llama al DAO
+        List<Reserva> lista = reservaDAO.obtenerReservasPorFecha(fecha);
+        
         modelReservas.setRowCount(0);
         for (Reserva r : lista) {
             String tipo = (r instanceof ReservaFija) ? "Fija" : "Simple";
@@ -490,6 +458,11 @@ public class MainFrame extends JFrame {
         }
     }
 
+    /**
+     * (SIN CAMBIOS)
+     * Esta es lógica de Presentación/Negocio. No toca la BD,
+     * solo usa los objetos del modelo para un cálculo.
+     */
     private void onCalcularCosto() {
         Cancha cancha = (Cancha) cmbCancha.getSelectedItem();
         Cliente cliente = (Cliente) cmbCliente.getSelectedItem();
@@ -497,6 +470,8 @@ public class MainFrame extends JFrame {
 
         LocalDate fecha = parseFecha(ftfFecha.getText());
         LocalTime hora  = parseHora(ftfHora.getText());
+        if (fecha == null || hora == null) return;
+        
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
 
         double costo;
@@ -504,82 +479,79 @@ public class MainFrame extends JFrame {
             ReservaSimple tmp = new ReservaSimple(0, inicio, cancha, cliente, (int) spDuracion.getValue());
             costo = tmp.calcularCostoTotal();
         } else {
+            LocalDate fechaFin = parseFecha(ftfFechaFin.getText());
+            if(fechaFin == null) fechaFin = fecha; // Asumir hoy si está vacío para el cálculo
+
             ReservaFija tmp = new ReservaFija(0, inicio, cancha, cliente,
                     (DayOfWeek) cmbDiaSemana.getSelectedItem(),
-                    parseFecha(ftfFechaFin.getText()),
+                    fechaFin,
                     ((Number) spDescuento.getValue()).doubleValue());
             tmp.setDuracionMinutos((int) spDuracion.getValue());
             costo = tmp.calcularCostoTotal();
         }
-        JOptionPane.showMessageDialog(this, "Costo estimado: $" + String.format("%.2f", costo));
+        JOptionPane.showMessageDialog(this, "Costo estimado: " + F_MONEDA_AR.format(costo));
     }
 
+    /**
+     * (REFACTORIZADO)
+     * Consulta disponibilidad usando el DAO.
+     */
     private void onConsultarDisponibilidad() {
         Cancha cancha = (Cancha) cmbCanchaDisp.getSelectedItem();
         if (cancha == null) return;
+        
         LocalDate fecha = parseFecha(ftfFechaDisp.getText());
-        List<LocalTime> libres = Reserva.consultarDisponibilidad(cancha.getIdCancha(), fecha);
+        if (fecha == null) return;
+        
+        // Llama al DAO
+        List<LocalTime> libres = reservaDAO.consultarDisponibilidad(cancha.getIdCancha(), fecha);
+        
         modelHoras.clear();
         for (LocalTime t : libres) modelHoras.addElement(t);
     }
 
+    /**
+     * (REFACTORIZADO)
+     * Agrega una cancha usando el DAO.
+     */
     private void onAgregarCancha() {
         String nom = txtNombreCancha.getText();
         String dep = txtDeporte.getText();
-        // si el campo viene vacío, Number puede ser null, así que controlemos
         Number numPrecio = (Number) ftfPrecioHora.getValue();
         double precio = (numPrecio != null) ? numPrecio.doubleValue() : 0.0;
 
-        if (nom == null || nom.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar un nombre de cancha.");
-            return;
-        }
-        if (dep == null || dep.trim().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debe ingresar un deporte.");
+        if (nom == null || nom.trim().isEmpty() || dep == null || dep.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Nombre y Deporte son obligatorios.");
             return;
         }
 
-        int idGenerado = -1;
-        String sql = "INSERT INTO cancha (nombre, deporte, precio_por_hora) VALUES (?, ?, ?)";
+        // 1. Crear objeto de negocio
+        Cancha c = new Cancha(0, nom, dep, precio); // ID 0, la BD lo asignará
 
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.PreparedStatement ps = cn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+        // 2. Enviar al DAO
+        int idGenerado = canchaDAO.agregarCancha(c);
 
-            ps.setString(1, nom);
-            ps.setString(2, dep);
-            ps.setDouble(3, precio);
-
-            int filas = ps.executeUpdate();
-            if (filas == 0) {
-                JOptionPane.showMessageDialog(this, "No se pudo guardar la cancha en la base.");
-                return;
-            }
-
-            try (java.sql.ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    idGenerado = rs.getInt(1);
-                }
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al guardar la cancha: " + e.getMessage());
-            return;
-        }
-
-        // Actualizar GUI con el id real
+        // 3. Actualizar GUI
         if (idGenerado != -1) {
-            Cancha c = new Cancha(idGenerado, nom, dep, precio);
+            // El DAO actualizó el ID en el objeto 'c'
             canchas.add(c);
             cmbCancha.addItem(c);
             cmbCanchaDisp.addItem(c);
-            modelCanchas.addRow(new Object[]{idGenerado, nom, dep, precio});
-            txtIdCancha.setText(String.valueOf(idGenerado));
+            modelCanchas.addRow(new Object[]{c.getIdCancha(), c.getNombre(), c.getDeporte(), c.getPrecioPorHora()});
+            
+            //txtIdCancha.setText(String.valueOf(idGenerado)); // Mostrar el ID generado
+            txtNombreCancha.setText("");
+            txtDeporte.setText("");
+            ftfPrecioHora.setValue(null);
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al guardar la cancha.");
         }
-
-        // limpiar campos
-        txtNombreCancha.setText("");
-        txtDeporte.setText("");
-        ftfPrecioHora.setValue(null);
     }
+    
+    /**
+     * (REFACTORIZADO)
+     * Agrega un cliente usando el DAO.
+     */
     private void onAgregarCliente() {
         String nom = txtNombreCliente.getText();
         String tel = txtTelefono.getText();
@@ -589,54 +561,31 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        int idGenerado = -1;
+        // 1. Crear objeto de negocio
+        Cliente cli = new Cliente(0, nom, tel); // ID 0, la BD lo asignará
 
-        // IMPORTANTE: ya no mandamos el id en el INSERT
-        String sql = "INSERT INTO cliente (nombre, telefono) VALUES (?, ?)";
+        // 2. Enviar al DAO
+        int idGenerado = clienteDAO.agregarCliente(cli);
 
-        try (java.sql.Connection cn = ConexionDB.conectar(); java.sql.PreparedStatement ps = cn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setString(1, nom);
-            ps.setString(2, tel);
-
-            int filas = ps.executeUpdate();
-            if (filas == 0) {
-                JOptionPane.showMessageDialog(this, "No se pudo guardar en la base.");
-                return;
-            }
-
-            // Recuperar el ID generado por MySQL
-            try (java.sql.ResultSet rs = ps.getGeneratedKeys()) {
-                if (rs.next()) {
-                    idGenerado = rs.getInt(1);
-                }
-            }
-
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Error al guardar en la base de datos: " + e.getMessage());
-            return;
-        }
-
-        // Si llegó hasta acá, ya está en la base.
-        // Ahora lo agregamos a la GUI usando el id generado
+        // 3. Actualizar GUI
         if (idGenerado != -1) {
-            Cliente cli = new Cliente(idGenerado, nom, tel);
+            // El DAO actualizó el ID en el objeto 'cli'
             clientes.add(cli);
             cmbCliente.addItem(cli);
-            modelClientes.addRow(new Object[]{idGenerado, nom, tel});
-            // mostrar en el campo de ID (solo lectura)
-            //txtIdCliente.setText(String.valueOf(idGenerado));
+            modelClientes.addRow(new Object[]{cli.getIdCliente(), cli.getNombreCliente(), cli.getTelefono()});
+            
+            txtNombreCliente.setText("");
+            txtTelefono.setText("");
+        } else {
+            JOptionPane.showMessageDialog(this, "Error al guardar el cliente.");
         }
-
-        // Limpiar campos de nombre y teléfono
-        txtNombreCliente.setText("");
-        txtTelefono.setText("");
     }
        
 
     // -----------------------------------------------------------
-    // Utilidades
+    // Utilidades de la GUI (Sin cambios)
     // -----------------------------------------------------------
+    
     private GridBagConstraints baseGC() {
         GridBagConstraints gc = new GridBagConstraints();
         gc.gridx = 0; gc.gridy = 0;
@@ -655,23 +604,45 @@ public class MainFrame extends JFrame {
         panel.add(field, f);
     }
 
-    private LocalDate parseFecha(String s) { return LocalDate.parse(s.trim(), F_FECHA); }
-    private LocalTime parseHora(String s)  { return LocalTime.parse(s.trim(), F_HORA); }
-    private int parseIntOr(String s, int def) { try { return Integer.parseInt(s.trim()); } catch (Exception e) { return def; } }
-    private double parseDoubleOr(String s, double def) { try { return Double.parseDouble(s.trim().replace(',', '.')); } catch (Exception e) { return def; } }
-    private int generarId() { return (int) (System.currentTimeMillis() & 0x7fffffff); }
-
-    private void agregarFila(Reserva r, String tipo) {
-        Object[] row = {
-                r.getIdReserva(),
-                r.getCancha()!=null? r.getCancha().getNombre(): "-",
-                r.getCliente()!=null? r.getCliente().getNombreCliente(): "-",
-                r.getFechaHoraInicio(),
-                r.getFechaHoraFin(),
-                tipo,
-                String.format("%.2f", r.calcularCostoTotal())
-        };
-        modelReservas.addRow(row);
+    private LocalDate parseFecha(String s) { 
+        try {
+            return LocalDate.parse(s.trim(), F_FECHA); 
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    private LocalTime parseHora(String s)  { 
+        try {
+            return LocalTime.parse(s.trim(), F_HORA); 
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    private int generarId() { 
+        // Ya no se usa, la BD genera los IDs
+        return (int) (System.currentTimeMillis() & 0x7fffffff); 
     }
 
+    /**
+     * Helper para agregar una fila a la tabla de reservas formateando los datos.
+     */
+    private void agregarFila(Reserva r, String tipo) {
+        String inicioStr = r.getFechaHoraInicio().format(F_FECHA_HORA_MOSTRAR);
+        String finStr = r.getFechaHoraFin().format(F_FECHA_HORA_MOSTRAR);
+        String costoStr = F_MONEDA_AR.format(r.calcularCostoTotal());
+
+        modelReservas.addRow(new Object[]{
+                r.getIdReserva(),
+                r.getCancha() != null ? r.getCancha().getNombre() : "-",
+                r.getCliente() != null ? r.getCliente().getNombreCliente() : "-",
+                inicioStr,
+                finStr,
+                tipo,
+                costoStr
+        });
+    }
+
+    // EL MÉTODO cargarDatosDeEjemplo() FUE ELIMINADO
+    // EL MÉTODO main() FUE ELIMINADO (el punto de entrada es GestorDeportivoApp)
 }
