@@ -2,6 +2,7 @@ package com.gestor.datos;
 
 import com.gestor.negocio.Cliente;
 import com.gestor.negocio.Cancha;
+import com.gestor.negocio.HorarioLaboral; // Asegúrate que este import esté
 import com.gestor.negocio.Reserva;
 import com.gestor.negocio.ReservaFija;
 import com.gestor.negocio.ReservaSimple;
@@ -21,20 +22,47 @@ import java.util.List;
  * (ACTUALIZADO)
  * Clase DAO para manejar toda la lógica de persistencia de Reservas en MySQL.
  * Incluye lógica de transacciones y manejo de grupos para Reservas Fijas.
+ * (MODIFICADO) Ahora usa HorarioDAO para la disponibilidad.
+ * (CORREGIDO) Ahora `registrarReserva` valida conflictos para ReservaSimple.
  */
 public class ReservaDAO {
 
+    // (NUEVO) Referencia al DAO de Horarios
+    private final HorarioDAO horarioDAO;
+
+    public ReservaDAO() {
+        this.horarioDAO = new HorarioDAO();
+    }
+    
     /**
+     * (CORREGIDO)
      * Método principal para registrar una reserva.
-     * Delega a métodos específicos si es Simple o Fija.
+     * Ahora valida conflictos para AMBOS tipos de reserva.
      *
      * @param reserva El objeto de reserva (Simple o Fija)
      * @return El ID (si es Simple) o la cantidad de reservas (si es Fija). -1 si hay error.
      */
     public int registrarReserva(Reserva reserva) {
         if (reserva instanceof ReservaSimple) {
+            
+            // --- INICIO DE CORRECCIÓN ---
+            // 1. Convertir a lista para usar el validador de conflictos
+            List<ReservaSimple> aChequear = new ArrayList<>();
+            aChequear.add((ReservaSimple) reserva);
+            
+            // 2. Validar conflictos ANTES de guardar
+            List<LocalDateTime> conflictos = consultarConflictos(aChequear);
+            if (!conflictos.isEmpty()) {
+                System.err.println("Conflicto de disponibilidad detectado para reserva simple en: " + conflictos.get(0));
+                return -1; // Indica conflicto
+            }
+            // --- FIN DE CORRECCIÓN ---
+            
+            // 3. Si no hay conflictos, registrar
             return registrarReservaSimple((ReservaSimple) reserva, null, null); // Sin transacción, sin grupo
+            
         } else if (reserva instanceof ReservaFija) {
+            // ReservaFija ya tiene su propia validación de conflictos interna
             return registrarReservaFija((ReservaFija) reserva);
         }
         return -1;
@@ -71,10 +99,15 @@ public class ReservaDAO {
             ps = connLocal.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setInt(1, reserva.getCancha().getIdCancha());
             ps.setInt(2, reserva.getCliente().getIdCliente());
-            ps.setTimestamp(3, Timestamp.valueOf(reserva.getFechaHoraInicio()));
+            // ps.setTimestamp(3, Timestamp.valueOf(reserva.getFechaHoraInicio())); // (CORREGIDO) Causa bug de TimeZone
+            ps.setObject(3, reserva.getFechaHoraInicio()); // (SOLUCIÓN) Usa el tipo de Java 8+
             ps.setInt(4, reserva.getDuracionMinutos());
             ps.setString(5, "Simple"); // Todas las reservas en la BD son 'simples'
-            ps.setDouble(6, reserva.calcularCostoTotal()); 
+            
+            // (CORREGIDO) Asegurarnos de calcular el costo simple
+            double costo = reserva.calcularCostoTotal();
+            ps.setDouble(6, costo); 
+            reserva.setCostoTotal(costo); // Actualiza el costo en el objeto
 
             // Asignar el ID de grupo
             if (idGrupoFija == null) {
@@ -131,7 +164,8 @@ public class ReservaDAO {
         List<ReservaSimple> reservasAGuardar = new ArrayList<>();
         LocalTime hora = fija.getFechaHoraInicio().toLocalTime();
         int duracion = fija.getDuracionMinutos();
-        double costoConDescuento = fija.calcularCostoTotal() / ocurrencias.size(); // Costo por turno
+        // (CORREGIDO) El costo total de la ReservaFija es el costo *por turno*
+        double costoConDescuento = fija.calcularCostoTotal();
 
         // 2. Crear la lista de reservas individuales
         for (LocalDate fecha : ocurrencias) {
@@ -260,10 +294,12 @@ public class ReservaDAO {
                 return cancelarReservaUnica(idReservaDeGrupo) ? 1 : -1;
             }
             
-            // 2. Borrar todas las reservas con ese ID de grupo
-            String sqlDeleteGroup = "DELETE FROM reserva WHERE id_grupo_fija = ?";
+            // 2. Borrar todas las reservas con ese ID de grupo (INCLUYENDO LA PRIMERA)
+            // (CORREGIDO) El ID de grupo es el ID de la primera reserva.
+            String sqlDeleteGroup = "DELETE FROM reserva WHERE id_grupo_fija = ? OR id_reserva = ?";
             try (PreparedStatement psDelete = cn.prepareStatement(sqlDeleteGroup)) {
                 psDelete.setInt(1, idGrupo);
+                psDelete.setInt(2, idGrupo); // Borra también la reserva "líder" del grupo
                 int filasAfectadas = psDelete.executeUpdate();
                 return filasAfectadas; // Devuelve cuántas se borraron
             }
@@ -284,7 +320,7 @@ public class ReservaDAO {
      */
     public List<Reserva> obtenerReservasPorFecha(LocalDate fecha) {
         List<Reserva> reservas = new ArrayList<>();
-        // SQL MODIFICADO: Añade 'r.id_grupo_fija'
+        // SQL MODIFICADO: Añade 'r.id_grupo_fija' y 'r.costo_total'
         String sql = "SELECT r.*, c.nombre as cancha_nombre, c.deporte, c.precio_por_hora, cl.nombre as cliente_nombre, cl.telefono "
                    + "FROM reserva r "
                    + "JOIN cancha c ON r.id_cancha = c.id_cancha "
@@ -320,12 +356,16 @@ public class ReservaDAO {
                     // Crear ReservaSimple usando el constructor que acepta el ID de grupo
                     ReservaSimple r = new ReservaSimple(
                         rs.getInt("id_reserva"),
-                        rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(),
+                        // rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(), // (CORREGIDO) Causa bug de TimeZone
+                        rs.getObject("fecha_hora_inicio", LocalDateTime.class), // (SOLUCIÓN) Usa el tipo de Java 8+
                         c,
                         cl,
                         rs.getInt("duracion_minutos"),
                         idGrupo // <-- Pasa el ID de grupo
                     );
+                    
+                    // (NUEVO) Asigna el costo real guardado en la BD
+                    r.setCostoTotal(rs.getDouble("costo_total"));
                     
                     reservas.add(r);
                 }
@@ -337,7 +377,9 @@ public class ReservaDAO {
     }
 
     /**
-     * Consulta los horarios disponibles (en intervalos de 60 min) para una cancha y fecha.
+     * (MODIFICADO)
+     * Consulta los horarios disponibles usando la tabla `horario_laboral`
+     * en lugar de valores fijos (8 a 23).
      *
      * @param idCancha El ID de la cancha
      * @param fecha La fecha a consultar
@@ -346,7 +388,14 @@ public class ReservaDAO {
     public List<LocalTime> consultarDisponibilidad(int idCancha, LocalDate fecha) {
         List<LocalTime> libres = new ArrayList<>();
         
-        // 1. Obtener todas las reservas existentes para esa cancha y día
+        // 1. Obtener el horario laboral para ESE día
+        HorarioLaboral horario = horarioDAO.obtenerHorario(fecha.getDayOfWeek());
+        if (horario == null) {
+            System.err.println("No hay horario laboral definido para " + fecha.getDayOfWeek());
+            return libres; // Devuelve lista vacía
+        }
+
+        // 2. Obtener todas las reservas existentes para esa cancha y día
         String sqlReservas = "SELECT fecha_hora_inicio, duracion_minutos FROM reserva "
                            + "WHERE id_cancha = ? AND DATE(fecha_hora_inicio) = ?";
         
@@ -359,11 +408,16 @@ public class ReservaDAO {
             
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    // Solo necesitamos la info de tiempo, creamos un objeto 'dummy'
+                    // (MODIFICADO) Creamos una cancha 'dummy' pero con el ID correcto
+                    // para que 'solapa' funcione en la capa de negocio.
+                    Cancha canchaDummy = new Cancha();
+                    canchaDummy.setIdCancha(idCancha);
+                    
                     reservasDelDia.add(new ReservaSimple(
                         0, 
-                        rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(), 
-                        null, null, // No necesitamos Cancha/Cliente aquí
+                        // rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(), // (CORREGIDO) Causa bug de TimeZone
+                        rs.getObject("fecha_hora_inicio", LocalDateTime.class), // (SOLUCIÓN) Usa el tipo de Java 8+
+                        canchaDummy, null, // (MODIFICADO) Pasamos la cancha dummy
                         rs.getInt("duracion_minutos")
                     ));
                 }
@@ -373,21 +427,22 @@ public class ReservaDAO {
             return libres; // Devuelve lista vacía si hay error
         }
 
-        // 2. Iterar por los horarios del día (ej. 8am a 11pm)
-        LocalTime t = LocalTime.of(8, 0);
-        LocalTime finDia = LocalTime.of(23, 0);
-        int duracionTurno = 60; // Asumimos turnos de 60 min
+        // 3. Iterar por los horarios del día (SEGÚN LA BD)
+        LocalTime t = horario.getHoraApertura();
+        LocalTime finDia = horario.getHoraCierre();
+        int duracionTurno = horario.getDuracionTurnoMinutos();
 
         while (t.isBefore(finDia)) {
             LocalDateTime inicioTurno = LocalDateTime.of(fecha, t);
-            LocalDateTime finTurno = inicioTurno.plusMinutes(duracionTurno);
             
             boolean ocupado = false;
             
-            // Crear una reserva "dummy" para el turno que queremos chequear
-            ReservaSimple turnoAChequear = new ReservaSimple(0, inicioTurno, null, null, duracionTurno);
+            // (MODIFICADO) Crear una reserva "dummy" con el ID de cancha correcto
+            Cancha canchaDummy = new Cancha();
+            canchaDummy.setIdCancha(idCancha);
+            ReservaSimple turnoAChequear = new ReservaSimple(0, inicioTurno, canchaDummy, null, duracionTurno);
             
-            // 3. Comprobar si solapa con alguna reserva existente
+            // 4. Comprobar si solapa con alguna reserva existente
             for (Reserva r : reservasDelDia) {
                 if (turnoAChequear.solapa(r)) { // Usamos la lógica de negocio de Reserva.java
                     ocupado = true;
@@ -408,7 +463,7 @@ public class ReservaDAO {
     /**
      * Verifica si una lista de reservas propuestas entra en conflicto
      * con CUALQUIER reserva existente en la base de datos.
-     * Usado para validar Reservas Fijas.
+     * Usado para validar Reservas Fijas (y ahora Simples).
      * @param reservasPropuestas La lista de reservas a verificar
      * @return Una lista de LocalDateTime de los horarios en conflicto (vacía si no hay)
      */
@@ -418,7 +473,14 @@ public class ReservaDAO {
             return conflictos;
         }
 
-        int idCancha = reservasPropuestas.get(0).getCancha().getIdCancha();
+        // (MODIFICADO) Obtenemos la cancha del objeto (ya no es null)
+        Cancha canchaPropuesta = reservasPropuestas.get(0).getCancha();
+        if (canchaPropuesta == null) {
+            System.err.println("Error de validación: La reserva propuesta no tiene cancha.");
+            return conflictos; // No se puede validar
+        }
+        int idCancha = canchaPropuesta.getIdCancha();
+        
         LocalDate fechaInicio = reservasPropuestas.get(0).getFechaHoraInicio().toLocalDate();
         LocalDate fechaFin = reservasPropuestas.get(reservasPropuestas.size() - 1).getFechaHoraInicio().toLocalDate();
 
@@ -436,10 +498,15 @@ public class ReservaDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    // (MODIFICADO) Creamos una cancha 'dummy' con el ID correcto
+                    Cancha canchaDummy = new Cancha();
+                    canchaDummy.setIdCancha(idCancha);
+                    
                     reservasExistentes.add(new ReservaSimple(
                         0, 
-                        rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(), 
-                        null, null, 
+                        // rs.getTimestamp("fecha_hora_inicio").toLocalDateTime(), // (CORREGIDO) Causa bug de TimeZone
+                        rs.getObject("fecha_hora_inicio", LocalDateTime.class), // (SOLUCIÓN) Usa el tipo de Java 8+
+                        canchaDummy, null, // Pasamos la cancha dummy
                         rs.getInt("duracion_minutos")
                     ));
                 }
@@ -454,6 +521,7 @@ public class ReservaDAO {
         // 3. Comprobar cada reserva propuesta contra las existentes (lógica en memoria)
         for (ReservaSimple propuesta : reservasPropuestas) {
             for (Reserva existente : reservasExistentes) {
+                // Ahora 'solapa' comparará IDs de cancha (propuesta.cancha vs existente.cancha)
                 if (propuesta.solapa(existente)) {
                     conflictos.add(propuesta.getFechaHoraInicio());
                     break; // No es necesario seguir comprobando esta propuesta
@@ -464,4 +532,5 @@ public class ReservaDAO {
         return conflictos;
     }
 }
+
 

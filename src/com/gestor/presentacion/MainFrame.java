@@ -29,6 +29,8 @@ import java.util.List;
  * Maneja los objetos de la Capa de Negocio (Cliente, Cancha, Reserva).
  * Incluye lógica para ocultar/mostrar campos y filtrar combos.
  * Incluye lógica para cancelación de reservas simples vs. fijas (en grupo).
+ * (CORREGIDO) Disponibilidad usa JTable.
+ * (CORREGIDO) RegistrarReserva ahora recarga la lista.
  */
 public class MainFrame extends JFrame {
 
@@ -79,8 +81,9 @@ public class MainFrame extends JFrame {
     public JComboBox<Cancha> cmbCanchaDisp;
     public JFormattedTextField ftfFechaDisp;
     public JButton btnConsultarDisponibilidad;
-    public JList<LocalTime> lstHorasLibres;
-    public DefaultListModel<LocalTime> modelHoras;
+    // (MODIFICADO) Cambiado de JList a JTable
+    public JTable tblHorasLibres;
+    public DefaultTableModel modelHoras;
 
     // ---- Canchas ----
     private JPanel panelCanchas;
@@ -288,6 +291,10 @@ public class MainFrame extends JFrame {
         tabs.addTab("Reservas", panelReservas);
     }
 
+    /**
+     * (MODIFICADO)
+     * Reemplaza la JList por una JTable para mostrar la disponibilidad.
+     */
     private void buildPanelDisponibilidad() {
         panelDisponibilidad = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
@@ -305,9 +312,19 @@ public class MainFrame extends JFrame {
 
         panelDisponibilidad.add(form, BorderLayout.NORTH);
 
-        modelHoras = new DefaultListModel<>();
-        lstHorasLibres = new JList<>(modelHoras);
-        panelDisponibilidad.add(new JScrollPane(lstHorasLibres), BorderLayout.CENTER);
+        // --- INICIO DE MODIFICACIÓN ---
+        // modelHoras = new DefaultListModel<>(); // Ya no se usa
+        // lstHorasLibres = new JList<>(modelHoras); // Ya no se usa
+        
+        // Crear JTable en su lugar
+        String[] cols = {"Horario de Inicio"};
+        modelHoras = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
+        };
+        tblHorasLibres = new JTable(modelHoras);
+        
+        panelDisponibilidad.add(new JScrollPane(tblHorasLibres), BorderLayout.CENTER);
+        // --- FIN DE MODIFICACIÓN ---
 
         btnConsultarDisponibilidad.addActionListener(e -> onConsultarDisponibilidad());
 
@@ -445,9 +462,11 @@ public class MainFrame extends JFrame {
 
 
     /**
-     * (REFACTORIZADO)
+     * (REFACTORIZADO Y CORREGIDO)
      * Crea un objeto de negocio (Reserva) y lo pasa al DAO para guardarlo.
      * Ya no contiene SQL.
+     * (CORRECCIÓN) Llama a onListarReservasDia() después de una
+     * inserción simple para resincronizar la tabla.
      */
     private void onRegistrarReserva() {
         // 1. Obtener datos de la GUI
@@ -497,10 +516,14 @@ public class MainFrame extends JFrame {
             
             if (nuevaReserva instanceof ReservaSimple) {
                 // Éxito de Reserva Simple (resultado es el idGenerado)
-                // La añadimos también a la lista interna
-                reservasMostradasEnTabla.add(nuevaReserva);
-                agregarFila(nuevaReserva, "Simple");
                 JOptionPane.showMessageDialog(this, "Reserva guardada correctamente.");
+
+                // --- INICIO DE CORRECCIÓN (Bug 19hs vs 20hs) ---
+                // No agregamos la fila manualmente, recargamos toda la lista del día
+                // para asegurar que la vista esté 100% sincronizada con la BD.
+                onListarReservasDia(); 
+                // --- FIN DE CORRECCIÓN ---
+                
             } else {
                 // Éxito de Reserva Fija (resultado es la cantidad de filas)
                 JOptionPane.showMessageDialog(this, "Se guardaron " + resultado + " reservas fijas correctamente.");
@@ -534,7 +557,7 @@ public class MainFrame extends JFrame {
         for (Reserva r : reservasMostradasEnTabla) {
             // El tipo "Fija" lo determinamos si tiene un ID de grupo
             String tipo = (r.esParteDeGrupo()) ? "Fija" : "Simple";
-            agregarFila(r, tipo);
+            agregarFila(r, tipo, r.calcularCostoTotal()); // (CORREGIDO) Pasa el costo
         }
     }
 
@@ -651,19 +674,33 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "La fecha de fin no es válida para calcular el costo.");
                 return;
             }
+            
+            // (CORREGIDO) Instancia de Fija ahora usa la duración y descuento correctos
             ReservaFija tmp = new ReservaFija(0, inicio, cancha, cliente,
                     (DayOfWeek) cmbDiaSemana.getSelectedItem(),
                     fechaFin,
                     ((Number) spDescuento.getValue()).doubleValue());
             tmp.setDuracionMinutos((int) spDuracion.getValue());
-            costo = tmp.calcularCostoTotal();
+            
+            // El costo total de una fija se calcula diferente
+            // (El DAO se encarga de calcular el costo total de la *serie*)
+            // Aquí mostramos el costo *por turno*
+            costo = tmp.calcularCostoTotal(); 
+            
+            List<LocalDate> ocurrencias = tmp.generarOcurrencias(inicio.toLocalDate(), fechaFin);
+            int numOcurrencias = ocurrencias.isEmpty() ? 1 : ocurrencias.size();
+            
+            JOptionPane.showMessageDialog(this, "Costo por turno: " + F_MONEDA_AR.format(costo) + "\n"
+                    + "Número de ocurrencias: " + numOcurrencias + "\n"
+                    + "Costo TOTAL (serie): " + F_MONEDA_AR.format(costo * numOcurrencias));
+            return;
         }
         JOptionPane.showMessageDialog(this, "Costo estimado: " + F_MONEDA_AR.format(costo));
     }
 
     /**
-     * (REFACTORIZADO)
-     * Consulta disponibilidad usando el DAO.
+     * (MODIFICADO)
+     * Consulta disponibilidad usando el DAO y puebla la JTable.
      */
     private void onConsultarDisponibilidad() {
         Cancha cancha = (Cancha) cmbCanchaDisp.getSelectedItem();
@@ -675,8 +712,15 @@ public class MainFrame extends JFrame {
         // Llama al DAO
         List<LocalTime> libres = reservaDAO.consultarDisponibilidad(cancha.getIdCancha(), fecha);
         
-        modelHoras.clear();
-        for (LocalTime t : libres) modelHoras.addElement(t);
+        // --- INICIO DE MODIFICACIÓN ---
+        // modelHoras.clear(); // Ya no se usa
+        modelHoras.setRowCount(0); // Limpia la tabla
+        
+        for (LocalTime t : libres) {
+            // modelHoras.addElement(t); // Ya no se usa
+            modelHoras.addRow(new Object[]{ t.format(F_HORA) }); // Añade fila a la tabla
+        }
+        // --- FIN DE MODIFICACIÓN ---
     }
 
     /**
@@ -794,11 +838,14 @@ public class MainFrame extends JFrame {
     
     /**
      * Agrega una fila a la tabla de reservas formateando las fechas y costos.
+     * (CORREGIDO) Acepta el costo como parámetro, ya que el costo
+     * de r.calcularCostoTotal() puede ser diferente al guardado en la BD
+     * (especialmente para reservas fijas).
      */
-    private void agregarFila(Reserva r, String tipo) {
+    private void agregarFila(Reserva r, String tipo, double costoGuardado) {
         String inicioStr = r.getFechaHoraInicio().format(F_FECHA_HORA_MOSTRAR);
         String finStr = r.getFechaHoraFin().format(F_FECHA_HORA_MOSTRAR);
-        String costoStr = F_MONEDA_AR.format(r.calcularCostoTotal());
+        String costoStr = F_MONEDA_AR.format(costoGuardado);
 
         modelReservas.addRow(new Object[]{
                 r.getIdReserva(),

@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
  * (MODIFICADO)
  * Clase abstracta que define una reserva.
  * Ahora incluye 'idGrupoFija' para saber si pertenece a una serie.
+ * (MODIFICADO OTRA VEZ) Método 'solapa' corregido.
  */
 public abstract class Reserva implements Serializable {
 
@@ -60,18 +61,48 @@ public abstract class Reserva implements Serializable {
     }
 
     /**
-     * Lógica de negocio pura: determina si esta reserva se pisa con otra
-     * en la misma cancha.
+     * (CORREGIDO OTRA VEZ)
+     * Lógica de negocio pura: determina si esta reserva se pisa con otra.
+     * La lógica de "no solapamiento" es:
+     * (this.fin <= otra.inicio) O (otra.fin <= this.inicio)
+     * Por lo tanto, el solapamiento es la negación de eso.
+     *
+     * (CORRECCIÓN FINAL)
+     * La lógica anterior `otra.getFechaHoraFin().isEqual(this.fechaHoraInicio)` [20:00 == 20:00]
+     * causaba que dos reservas "tocándose" (19-20 y 20-21) no se solapen.
+     * La nueva lógica `!A.isBefore(B)` es lo mismo que `A >= B`.
+     * Un solapamiento real ocurre si:
+     * this.inicio < otra.fin Y this.fin > otra.inicio
      */
     public boolean solapa(Reserva otra) {
-        if (this.cancha == null || otra.cancha == null) return false;
-        if (this.cancha.getIdCancha() != otra.cancha.getIdCancha()) return false;
         
-        // Comprobación de solapamiento de rangos de tiempo
-        return !(getFechaHoraFin().isEqual(otra.fechaHoraInicio) || getFechaHoraFin().isBefore(otra.fechaHoraInicio)
-                 || otra.getFechaHoraFin().isEqual(this.fechaHoraInicio) || otra.getFechaHoraFin().isBefore(this.fechaHoraInicio));
+        // --- INICIO DE CORRECCIÓN ---
+        if (this.cancha != null && otra.cancha != null) {
+            if (this.cancha.getIdCancha() != otra.cancha.getIdCancha()) {
+                return false; // Son canchas diferentes, no pueden solapar.
+            }
+        }
+        
+        LocalDateTime thisInicio = this.getFechaHoraInicio();
+        LocalDateTime thisFin = this.getFechaHoraFin();
+        LocalDateTime otraInicio = otra.getFechaHoraInicio();
+        LocalDateTime otraFin = otra.getFechaHoraFin();
+
+        // Lógica de solapamiento (Overlapping intervals)
+        // Solapan si (InicioA < FinB) y (InicioB < FinA)
+        // Usamos !isBefore (>=) y !isAfter (<=) para manejar los bordes.
+        
+        // (this.inicio < otra.fin)
+        boolean check1 = thisInicio.isBefore(otraFin);
+        
+        // (otra.inicio < this.fin)
+        boolean check2 = otraInicio.isBefore(thisFin);
+
+        return check1 && check2;
+        // --- FIN DE CORRECCIÓN ---
     }
 
     // --- TODO EL CÓDIGO DE PERSISTENCIA (loadAll, saveAll, etc.) FUE ELIMINADO ---
     // --- Esa lógica ahora pertenece a ReservaDAO en la capa de datos. ---
 }
+
