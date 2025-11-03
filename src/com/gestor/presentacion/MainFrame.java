@@ -1,9 +1,10 @@
-package com.gestor.presentacion; // <-- PAQUETE ACTUALIZADO
+package com.gestor.presentacion;
 
 // Imports de la GUI (Swing)
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.event.ActionListener; // <-- IMPORT NECESARIO
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -41,7 +42,8 @@ public class MainFrame extends JFrame {
 
     // ---- Reservas ----
     private JPanel panelReservas;
-    //public JTextField txtIdReserva;
+    public JTextField txtIdReserva;
+    public JComboBox<String> cmbDeporteReserva; // <-- NUEVO: Combo para filtrar deporte en Reservas
     public JComboBox<Cancha> cmbCancha;
     public JComboBox<Cliente> cmbCliente;
     public JFormattedTextField ftfFecha; // dd/MM/yyyy
@@ -53,6 +55,13 @@ public class MainFrame extends JFrame {
     public JComboBox<DayOfWeek> cmbDiaSemana;
     public JFormattedTextField ftfFechaFin; // dd/MM/yyyy
     public JSpinner spDescuento;            // 0..1
+
+    // --- CAMBIO 1: Declarar los JLabels como atributos de la clase ---
+    private JLabel lblDiaSemana;
+    private JLabel lblFechaFin;
+    private JLabel lblDescuento;
+    // --- FIN CAMBIO 1 ---
+
     public JButton btnCalcularCosto;
     public JButton btnRegistrarReserva;
     public JButton btnCancelarReserva;
@@ -70,9 +79,9 @@ public class MainFrame extends JFrame {
 
     // ---- Canchas ----
     private JPanel panelCanchas;
-    //public JTextField txtIdCancha;
+    public JTextField txtIdCancha;
     public JTextField txtNombreCancha;
-    public JTextField txtDeporte;
+    public JComboBox<String> cmbDeporteCancha; // <-- CAMBIO: de JTextField a JComboBox
     public JFormattedTextField ftfPrecioHora;
     public JButton btnAgregarCancha;
     public JTable tblCanchas;
@@ -95,6 +104,11 @@ public class MainFrame extends JFrame {
 
     private static final java.text.NumberFormat F_MONEDA_AR
             = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("es", "AR"));
+            
+    // --- NUEVO: Listas de deportes ---
+    private static final String[] DEPORTES_PARA_CREAR = {"Fútbol", "Pádel", "Tenis", "Básquet"};
+    private static final String[] DEPORTES_PARA_FILTRO = {"Todos", "Fútbol", "Pádel", "Tenis", "Básquet"};
+    // --- FIN NUEVO ---
 
     public MainFrame() {
         setTitle("Gestor Deportivo");
@@ -110,7 +124,7 @@ public class MainFrame extends JFrame {
         // ----------------------------------
 
         tabs = new JTabbedPane();
-        buildPanelReservas();
+        buildPanelReservas(); // <-- Este método ahora tiene la lógica de UI
         buildPanelDisponibilidad();
         buildPanelCanchas();
         buildPanelClientes();
@@ -168,22 +182,45 @@ public class MainFrame extends JFrame {
             cmbCanchaDisp.addItem(c);
             modelCanchas.addRow(new Object[]{c.getIdCancha(), c.getNombre(), c.getDeporte(), c.getPrecioPorHora()});
         }
+        // NOTA: El filtro de canchas por deporte se llama implícitamente
+        // porque cmbCancha.addItem() dispara el listener de cmbDeporteReserva
+        // si ya fue inicializado. Para asegurar, lo llamamos explícitamente.
+        if (cmbDeporteReserva != null) {
+            filtrarCanchasPorDeporte();
+        }
     }
 
     // -----------------------------------------------------------
-    // Construcción de pestañas (Sin cambios)
+    // Construcción de pestañas
     // -----------------------------------------------------------
+    
+    /**
+     * (MODIFICADO)
+     * Construye el panel de reservas y agrega la lógica para
+     * mostrar/ocultar los campos de reserva fija.
+     * Agrega el filtro de deportes.
+     */
     private void buildPanelReservas() {
         panelReservas = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        //txtIdReserva = new JTextField(10);
+        txtIdReserva = new JTextField(10);
         // El ID de reserva es autogenerado por la BD, lo deshabilitamos
-        /*txtIdReserva.setText("(Automático)");
-        txtIdReserva.setEnabled(false); */
+        txtIdReserva.setText("(Automático)");
+        txtIdReserva.setEnabled(false); 
         
+        // --- CAMBIO: Lógica de filtro de canchas ---
+        // 1. Crear el combo de DEPORTE (para filtrar)
+        cmbDeporteReserva = new JComboBox<>(DEPORTES_PARA_FILTRO);
+        
+        // 2. Crear el combo de CANCHA (vacío al inicio)
         cmbCancha = new JComboBox<>();
+        
+        // 3. Agregar el listener para que el combo de deporte filtre el de cancha
+        cmbDeporteReserva.addActionListener(e -> filtrarCanchasPorDeporte());
+        // --- FIN CAMBIO ---
+        
         cmbCliente = new JComboBox<>();
         ftfFecha = new JFormattedTextField(F_FECHA.toFormat());
         ftfFecha.setColumns(8);
@@ -198,26 +235,45 @@ public class MainFrame extends JFrame {
         bgTipo   = new ButtonGroup();
         bgTipo.add(rbSimple); bgTipo.add(rbFija);
 
+        // --- CAMBIO: Agregar Listeners y asignar atributos ---
+        
+        // 1. Crear el listener para los radio buttons
+        ActionListener radioListener = e -> actualizarVisibilidadCamposFijos();
+        rbSimple.addActionListener(radioListener);
+        rbFija.addActionListener(radioListener);
+
+        // 2. Instanciar los componentes (inputs y labels)
         cmbDiaSemana = new JComboBox<>(DayOfWeek.values());
         ftfFechaFin  = new JFormattedTextField(F_FECHA.toFormat());
         ftfFechaFin.setColumns(8);
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
+        
+        // 3. Instanciar los JLabels (usando los atributos de clase)
+        lblDiaSemana = new JLabel("Día semana (fija):");
+        lblFechaFin = new JLabel("Fecha fin (fija):");
+        lblDescuento = new JLabel("Descuento 0..1 (fija):");
+        
+        // --- FIN CAMBIO ---
 
         // Fila 0..N
-        //addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
-        addRow(form, gc, 1, new JLabel("Cancha:"), cmbCancha);
-        addRow(form, gc, 2, new JLabel("Cliente:"), cmbCliente);
-        addRow(form, gc, 3, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha);
-        addRow(form, gc, 4, new JLabel("Hora (HH:mm):"), ftfHora);
-        addRow(form, gc, 5, new JLabel("Duración (min):"), spDuracion);
+        addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
+        // --- CAMBIO: Agregar fila de Deporte y re-numerar ---
+        addRow(form, gc, 1, new JLabel("Deporte:"), cmbDeporteReserva);
+        addRow(form, gc, 2, new JLabel("Cancha:"), cmbCancha); // era 1
+        addRow(form, gc, 3, new JLabel("Cliente:"), cmbCliente); // era 2
+        addRow(form, gc, 4, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha); // era 3
+        addRow(form, gc, 5, new JLabel("Hora (HH:mm):"), ftfHora); // era 4
+        addRow(form, gc, 6, new JLabel("Duración (min):"), spDuracion); // era 5
+        // --- FIN CAMBIO ---
 
         JPanel tipoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         tipoPanel.add(rbSimple); tipoPanel.add(rbFija);
-        addRow(form, gc, 6, new JLabel("Tipo:"), tipoPanel);
+        addRow(form, gc, 7, new JLabel("Tipo:"), tipoPanel); // era 6
 
-        addRow(form, gc, 7, new JLabel("Día semana (fija):"), cmbDiaSemana);
-        addRow(form, gc, 8, new JLabel("Fecha fin (fija):"), ftfFechaFin);
-        addRow(form, gc, 9, new JLabel("Descuento 0..1 (fija):"), spDescuento);
+        // 4. Usar los atributos de JLabel en addRow (con nueva numeración)
+        addRow(form, gc, 8, lblDiaSemana, cmbDiaSemana); // era 7
+        addRow(form, gc, 9, lblFechaFin, ftfFechaFin); // era 8
+        addRow(form, gc, 10, lblDescuento, spDescuento); // era 9
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         btnCalcularCosto = new JButton("Calcular costo");
@@ -228,7 +284,7 @@ public class MainFrame extends JFrame {
         acciones.add(btnRegistrarReserva);
         acciones.add(btnCancelarReserva);
         acciones.add(btnListarReservasDia);
-        addRow(form, gc, 10, new JLabel("Acciones:"), acciones);
+        addRow(form, gc, 11, new JLabel("Acciones:"), acciones); // era 10
 
         panelReservas.add(form, BorderLayout.NORTH);
 
@@ -246,6 +302,11 @@ public class MainFrame extends JFrame {
         btnListarReservasDia.addActionListener(e -> onListarReservasDia());
         btnCalcularCosto.addActionListener(e -> onCalcularCosto());
 
+        // --- CAMBIO (Continuación) ---
+        // 5. Llamada inicial para ocultar los campos al arrancar
+        actualizarVisibilidadCamposFijos();
+        // --- FIN CAMBIO ---
+        
         tabs.addTab("Reservas", panelReservas);
     }
 
@@ -275,24 +336,34 @@ public class MainFrame extends JFrame {
         tabs.addTab("Disponibilidad", panelDisponibilidad);
     }
 
+    /**
+     * (MODIFICADO)
+     * Construye el panel de canchas usando un JComboBox para el deporte.
+     */
     private void buildPanelCanchas() {
         panelCanchas = new JPanel(new BorderLayout(10,10));
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        /*txtIdCancha = new JTextField(8);
+        txtIdCancha = new JTextField(8);
         txtIdCancha.setText("(Automático)");
-        txtIdCancha.setEnabled(false); // ID es autogenerado*/
+        txtIdCancha.setEnabled(false); // ID es autogenerado
         
         txtNombreCancha = new JTextField(14);
-        txtDeporte = new JTextField(10);
+        
+        // --- CAMBIO: Usar JComboBox en lugar de JTextField ---
+        cmbDeporteCancha = new JComboBox<>(DEPORTES_PARA_CREAR);
+        // --- FIN CAMBIO ---
+        
         ftfPrecioHora = new JFormattedTextField(java.text.NumberFormat.getNumberInstance());
         ftfPrecioHora.setColumns(8);
         btnAgregarCancha = new JButton("Agregar cancha");
 
-        //addRow(form, gc, 0, new JLabel("ID:"), txtIdCancha);
+        addRow(form, gc, 0, new JLabel("ID:"), txtIdCancha);
         addRow(form, gc, 1, new JLabel("Nombre:"), txtNombreCancha);
-        addRow(form, gc, 2, new JLabel("Deporte:"), txtDeporte);
+        // --- CAMBIO: Usar JComboBox en addRow ---
+        addRow(form, gc, 2, new JLabel("Deporte:"), cmbDeporteCancha);
+        // --- FIN CAMBIO ---
         addRow(form, gc, 3, new JLabel("Precio/hora:"), ftfPrecioHora);
         addRow(form, gc, 4, new JLabel("Acción:"), btnAgregarCancha);
 
@@ -343,6 +414,64 @@ public class MainFrame extends JFrame {
     // -----------------------------------------------------------
 
     /**
+     * (NUEVO MÉTODO)
+     * Muestra u oculta los campos específicos de Reserva Fija
+     * basado en la selección del radio button.
+     */
+    private void actualizarVisibilidadCamposFijos() {
+        boolean esFija = rbFija.isSelected();
+        
+        // Muestra u oculta los 3 labels y los 3 campos
+        lblDiaSemana.setVisible(esFija);
+        cmbDiaSemana.setVisible(esFija);
+        
+        lblFechaFin.setVisible(esFija);
+        ftfFechaFin.setVisible(esFija);
+        
+        lblDescuento.setVisible(esFija);
+        spDescuento.setVisible(esFija);
+    }
+
+    /**
+     * (NUEVO MÉTODO)
+     * Filtra el JComboBox de canchas en la pestaña de Reservas
+     * según el deporte seleccionado.
+     */
+    private void filtrarCanchasPorDeporte() {
+        String deporteSeleccionado = (String) cmbDeporteReserva.getSelectedItem();
+        
+        // Guarda la cancha que estaba seleccionada, si había una
+        Cancha canchaPreviamenteSeleccionada = (Cancha) cmbCancha.getSelectedItem();
+        
+        // Limpia el combo de canchas
+        cmbCancha.removeAllItems();
+        
+        Cancha canchaParaSeleccionar = null;
+        
+        // Itera sobre la lista MAESTRA de canchas (que está en memoria)
+        for (Cancha c : this.canchas) {
+            boolean coincide = "Todos".equals(deporteSeleccionado) || 
+                               c.getDeporte().equalsIgnoreCase(deporteSeleccionado);
+            
+            if (coincide) {
+                cmbCancha.addItem(c); // Agrega la cancha al combo
+                
+                // Si esta cancha era la que estaba seleccionada, la marca para re-seleccionarla
+                if (canchaPreviamenteSeleccionada != null && c.getIdCancha() == canchaPreviamenteSeleccionada.getIdCancha()) {
+                    canchaParaSeleccionar = c;
+                }
+            }
+        }
+        
+        // Si había una cancha seleccionada y todavía está en la lista filtrada,
+        // la vuelve a seleccionar.
+        if (canchaParaSeleccionar != null) {
+            cmbCancha.setSelectedItem(canchaParaSeleccionar);
+        }
+    }
+
+
+    /**
      * (REFACTORIZADO)
      * Crea un objeto de negocio (Reserva) y lo pasa al DAO para guardarlo.
      * Ya no contiene SQL.
@@ -353,7 +482,7 @@ public class MainFrame extends JFrame {
         Cliente cliente = (Cliente) cmbCliente.getSelectedItem();
 
         if (cancha == null || cliente == null) {
-            JOptionPane.showMessageDialog(this, "Debe seleccionar una cancha y un cliente.");
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un deporte, cancha y cliente.");
             return;
         }
 
@@ -511,16 +640,19 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (REFACTORIZADO)
-     * Agrega una cancha usando el DAO.
+     * (MODIFICADO)
+     * Agrega una cancha usando el DAO, leyendo el deporte desde el JComboBox.
      */
     private void onAgregarCancha() {
         String nom = txtNombreCancha.getText();
-        String dep = txtDeporte.getText();
+        // --- CAMBIO: Leer desde JComboBox ---
+        String dep = (String) cmbDeporteCancha.getSelectedItem();
+        // --- FIN CAMBIO ---
+        
         Number numPrecio = (Number) ftfPrecioHora.getValue();
         double precio = (numPrecio != null) ? numPrecio.doubleValue() : 0.0;
 
-        if (nom == null || nom.trim().isEmpty() || dep == null || dep.trim().isEmpty()) {
+        if (nom == null || nom.trim().isEmpty() || dep == null) {
             JOptionPane.showMessageDialog(this, "Nombre y Deporte son obligatorios.");
             return;
         }
@@ -535,13 +667,18 @@ public class MainFrame extends JFrame {
         if (idGenerado != -1) {
             // El DAO actualizó el ID en el objeto 'c'
             canchas.add(c);
-            cmbCancha.addItem(c);
+            // cmbCancha.addItem(c); // Se actualiza mediante el filtro
             cmbCanchaDisp.addItem(c);
             modelCanchas.addRow(new Object[]{c.getIdCancha(), c.getNombre(), c.getDeporte(), c.getPrecioPorHora()});
             
-            //txtIdCancha.setText(String.valueOf(idGenerado)); // Mostrar el ID generado
+            // Actualiza el filtro de reservas por si el nuevo deporte coincide
+            filtrarCanchasPorDeporte();
+            
+            txtIdCancha.setText(String.valueOf(idGenerado)); // Mostrar el ID generado
             txtNombreCancha.setText("");
-            txtDeporte.setText("");
+            // --- CAMBIO: Resetear JComboBox ---
+            cmbDeporteCancha.setSelectedIndex(0);
+            // --- FIN CAMBIO ---
             ftfPrecioHora.setValue(null);
         } else {
             JOptionPane.showMessageDialog(this, "Error al guardar la cancha.");
@@ -619,10 +756,10 @@ public class MainFrame extends JFrame {
         }
     }
     
-    private int generarId() { 
-        // Ya no se usa, la BD genera los IDs
-        return (int) (System.currentTimeMillis() & 0x7fffffff); 
-    }
+    // Este método ya no es necesario, la BD genera los IDs
+    // private int generarId() { 
+    //     return (int) (System.currentTimeMillis() & 0x7fffffff); 
+    // }
 
     /**
      * Helper para agregar una fila a la tabla de reservas formateando los datos.
@@ -646,3 +783,4 @@ public class MainFrame extends JFrame {
     // EL MÉTODO cargarDatosDeEjemplo() FUE ELIMINADO
     // EL MÉTODO main() FUE ELIMINADO (el punto de entrada es GestorDeportivoApp)
 }
+
