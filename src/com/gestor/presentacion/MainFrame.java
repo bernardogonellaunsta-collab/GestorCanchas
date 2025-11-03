@@ -1,5 +1,11 @@
-package com.gestor;
+package com.gestor.presentacion;
 
+import com.gestor.negocio.Cancha;
+import com.gestor.negocio.Cliente;
+import com.gestor.datos.ConexionDB;
+import com.gestor.negocio.Reserva;
+import com.gestor.negocio.ReservaFija;
+import com.gestor.negocio.ReservaSimple;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;

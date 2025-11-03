@@ -1,6 +1,8 @@
-package com.gestor;
+package com.gestor.negocio;
 
 
+import com.gestor.negocio.Cancha;
+import com.gestor.negocio.Cliente;
 import java.time.*;
 import java.util.*;
 

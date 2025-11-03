@@ -1,4 +1,4 @@
-package com.gestor;
+package com.gestor.negocio;
 
 
 import java.io.Serializable;
