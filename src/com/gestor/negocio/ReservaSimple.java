@@ -1,19 +1,31 @@
 package com.gestor.negocio;
 
+import java.time.LocalDateTime;
 
-import com.gestor.negocio.Cancha;
-import com.gestor.negocio.Cliente;
-import java.time.*;
-
+/**
+ * (MODIFICADO)
+ * Constructor actualizado.
+ */
 public class ReservaSimple extends Reserva {
 
     private int duracionMinutos;
 
-    public ReservaSimple() {}
+    public ReservaSimple() {
+        super();
+    }
 
-    public ReservaSimple(int idReserva, LocalDateTime fechaHoraInicio, Cancha cancha, Cliente cliente, int duracionMinutos) {
+    /**
+     * Constructor MODIFICADO para incluir el idGrupoFija (opcional).
+     */
+    public ReservaSimple(int idReserva, LocalDateTime fechaHoraInicio, Cancha cancha, Cliente cliente, int duracionMinutos, Integer idGrupoFija) {
         super(idReserva, fechaHoraInicio, cancha, cliente);
         this.duracionMinutos = duracionMinutos;
+        this.idGrupoFija = idGrupoFija; // Asigna el ID de grupo
+    }
+    
+    // Constructor anterior (lo mantenemos por compatibilidad si es necesario)
+    public ReservaSimple(int idReserva, LocalDateTime fechaHoraInicio, Cancha cancha, Cliente cliente, int duracionMinutos) {
+        this(idReserva, fechaHoraInicio, cancha, cliente, duracionMinutos, null);
     }
 
     public int getDuracionMinutos() { return duracionMinutos; }
