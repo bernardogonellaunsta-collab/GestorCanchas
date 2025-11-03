@@ -38,7 +38,7 @@ public class HorarioDAO {
                         dia,
                         rs.getTime("hora_apertura").toLocalTime(),
                         rs.getTime("hora_cierre").toLocalTime(),
-                        rs.getInt("duracion_turnos_minutos")
+                        rs.getInt("duracion_turno_min")
                     );
                 }
             }
