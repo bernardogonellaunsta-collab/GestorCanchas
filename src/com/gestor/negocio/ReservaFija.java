@@ -57,7 +57,7 @@ public class ReservaFija extends Reserva {
             semanas = 1;
         }
         double horas = duracionMinutos / 60.0;
-        double total = cancha.getPrecioPorHora() * horas * semanas;
+        double total = cancha.getPrecioPorHora() * horas ;
         return total * (1.0 - descuentoAplicado);
     }
 }

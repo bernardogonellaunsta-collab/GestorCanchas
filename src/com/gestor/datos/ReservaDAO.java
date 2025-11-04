@@ -12,6 +12,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -24,6 +25,7 @@ import java.util.List;
  * Incluye lógica de transacciones y manejo de grupos para Reservas Fijas.
  * (MODIFICADO) Ahora usa HorarioDAO para la disponibilidad.
  * (CORREGIDO) Ahora `registrarReserva` valida conflictos para ReservaSimple.
+ * (CORREGIDO) Ahora `registrarReserva` valida contra el horario laboral.
  */
 public class ReservaDAO {
 
@@ -38,11 +40,46 @@ public class ReservaDAO {
      * (CORREGIDO)
      * Método principal para registrar una reserva.
      * Ahora valida conflictos para AMBOS tipos de reserva.
+     * (NUEVA VALIDACIÓN) Valida contra el horario laboral.
      *
      * @param reserva El objeto de reserva (Simple o Fija)
      * @return El ID (si es Simple) o la cantidad de reservas (si es Fija). -1 si hay error.
      */
     public int registrarReserva(Reserva reserva) {
+        
+        // --- INICIO DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
+        LocalDate fechaReserva = reserva.getFechaHoraInicio().toLocalDate();
+        DayOfWeek dia = fechaReserva.getDayOfWeek();
+        HorarioLaboral horario = horarioDAO.obtenerHorario(dia);
+
+        if (horario == null) {
+            System.err.println("Error: No hay horario laboral definido para " + dia + ". No se puede registrar la reserva.");
+            return -1; // Indica error (cerrado ese día)
+        }
+
+        // --- INICIO DE CORRECCIÓN (Usar LocalDateTime) ---
+        LocalDateTime inicioReservaDT = reserva.getFechaHoraInicio();
+        LocalDateTime finReservaDT = reserva.getFechaHoraFin();
+        
+        LocalDateTime aperturaDT = LocalDateTime.of(fechaReserva, horario.getHoraApertura());
+        LocalDateTime cierreDT = LocalDateTime.of(fechaReserva, horario.getHoraCierre());
+        // --- FIN DE CORRECCIÓN ---
+
+        // Check 1: La hora de INICIO no puede ser antes de la apertura
+        if (inicioReservaDT.isBefore(aperturaDT)) {
+            System.err.println("Error: La reserva (" + inicioReservaDT.toLocalTime() + ") no puede ser antes de la hora de apertura (" + horario.getHoraApertura() + ").");
+            return -1;
+        }
+
+        // Check 2: La hora de FIN no puede ser después del cierre
+        // (isAfter compara el LocalDateTime completo)
+        if (finReservaDT.isAfter(cierreDT)) {
+            System.err.println("Error: El fin de la reserva (" + finReservaDT.toLocalTime() + " del " + finReservaDT.toLocalDate() + ") no puede ser después de la hora de cierre (" + horario.getHoraCierre() + " del " + fechaReserva + ").");
+            return -1;
+        }
+        // --- FIN DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
+
+
         if (reserva instanceof ReservaSimple) {
             
             // --- INICIO DE CORRECCIÓN ---
@@ -174,6 +211,37 @@ public class ReservaDAO {
             individual.setCostoTotal(costoConDescuento); 
             reservasAGuardar.add(individual);
         }
+
+        // --- INICIO DE NUEVA VALIDACIÓN DE HORARIO LABORAL (PARA RESERVAS FIJAS) ---
+        // Se debe chequear cada ocurrencia generada
+        for (ReservaSimple res : reservasAGuardar) {
+            LocalDate fechaRes = res.getFechaHoraInicio().toLocalDate();
+            DayOfWeek diaRes = fechaRes.getDayOfWeek();
+            HorarioLaboral horarioRes = horarioDAO.obtenerHorario(diaRes);
+
+            if (horarioRes == null) {
+                System.err.println("Error en reserva fija: No hay horario laboral definido para " + diaRes);
+                return -1;
+            }
+            
+            // --- INICIO DE CORRECCIÓN (Usar LocalDateTime) ---
+            LocalDateTime inicioReservaDT = res.getFechaHoraInicio();
+            LocalDateTime finReservaDT = res.getFechaHoraFin();
+
+            LocalDateTime aperturaDT = LocalDateTime.of(fechaRes, horarioRes.getHoraApertura());
+            LocalDateTime cierreDT = LocalDateTime.of(fechaRes, horarioRes.getHoraCierre());
+            // --- FIN DE CORRECCIÓN ---
+
+            if (inicioReservaDT.isBefore(aperturaDT)) {
+                System.err.println("Error en reserva fija: Una ocurrencia (" + inicioReservaDT.toLocalTime() + ") es antes de la apertura (" + aperturaDT.toLocalTime() + ").");
+                return -1;
+            }
+            if (finReservaDT.isAfter(cierreDT)) {
+                System.err.println("Error en reserva fija: Una ocurrencia (" + finReservaDT.toLocalTime() + " del " + finReservaDT.toLocalDate() + ") termina después del cierre (" + cierreDT.toLocalTime() + " del " + fechaRes + ").");
+                return -1;
+            }
+        }
+        // --- FIN DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
 
         // 3. Validar conflictos ANTES de intentar guardar
         List<LocalDateTime> conflictos = consultarConflictos(reservasAGuardar);
