@@ -228,9 +228,12 @@ public class MainFrame extends JFrame {
         
         cmbCliente = new JComboBox<>();
         
+        // --- INICIO DE MODIFICACIÓN: Restringir JDateChooser (jdcFecha) ---
         jdcFecha = new JDateChooser();
         jdcFecha.setDate(new Date()); // Valor por defecto: hoy
+        jdcFecha.setMinSelectableDate(new Date()); // <-- LÍNEA AÑADIDA
         jdcFecha.setPreferredSize(new Dimension(120, jdcFecha.getPreferredSize().height));
+        // --- FIN DE MODIFICACIÓN ---
 
         ftfHora = new JFormattedTextField(F_HORA.toFormat());
         ftfHora.setColumns(5);
@@ -250,8 +253,28 @@ public class MainFrame extends JFrame {
         // Instanciar los componentes (inputs y labels)
         cmbDiaSemana = new JComboBox<>(DayOfWeek.values());
         
+        // Restringir JDateChooser (jdcFechaFin) ---
         jdcFechaFin = new JDateChooser();
+        jdcFechaFin.setMinSelectableDate(new Date()); // <-- LÍNEA AÑADIDA
         jdcFechaFin.setPreferredSize(new Dimension(120, jdcFechaFin.getPreferredSize().height));
+        
+        // Listener para consistencia de fechas ---
+        // Para asegurar que la fecha de fin nunca sea anterior a la de inicio
+        jdcFecha.addPropertyChangeListener("date", evt -> {
+            Date fechaInicio = jdcFecha.getDate();
+            if (fechaInicio != null) {
+                // Si la fecha de fin actual es anterior a la nueva fecha de inicio, la actualiza
+                if (jdcFechaFin.getDate() == null || jdcFechaFin.getDate().before(fechaInicio)) {
+                    jdcFechaFin.setDate(fechaInicio);
+                }
+                // Establece la fecha de inicio como la mínima seleccionable para la fecha de fin
+                jdcFechaFin.setMinSelectableDate(fechaInicio);
+            } else {
+                // Si se borra la fecha de inicio, resetea la mínima de fin a "hoy"
+                jdcFechaFin.setMinSelectableDate(new Date());
+            }
+        });
+
 
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
         
@@ -335,6 +358,7 @@ public class MainFrame extends JFrame {
         
         jdcFechaDisp = new JDateChooser();
         jdcFechaDisp.setDate(new Date()); // Valor por defecto: hoy
+        jdcFechaDisp.setMinSelectableDate(new Date()); // Restringe la fecha para que no se pueda seleccionar una pasada
         jdcFechaDisp.setPreferredSize(new Dimension(120, jdcFechaDisp.getPreferredSize().height));
 
         btnConsultarDisponibilidad = new JButton("Consultar");
@@ -573,10 +597,7 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        // --- INICIO DE MODIFICACIÓN ---
-        // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
         LocalDate fecha = parseDateChooser(jdcFecha); // Lee del JDateChooser
-        // --- FIN DE MODIFICACIÓN ---
         
         LocalTime hora = parseHora(ftfHora.getText());
         
@@ -587,6 +608,22 @@ public class MainFrame extends JFrame {
         if (hora == null) {
              JOptionPane.showMessageDialog(this, "La hora ingresada no es válida (HH:mm).");
              return;
+        }
+        
+        LocalDate hoy = LocalDate.now();
+        LocalTime ahora = LocalTime.now();
+        
+        // VALIDACION DE FECHA PASADA
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, "No se puede seleccionar una fecha que ya pasó.", "Fecha Inválida", JOptionPane.WARNING_MESSAGE);
+            return; // Detiene el registro
+        }
+        
+        // --- VALIDACIÓN DE HORA PASADA ---
+        // Comprueba si la fecha seleccionada es hoy Y la hora seleccionada es anterior a la hora actual
+        if (fecha.equals(hoy) && hora.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this, "No se puede seleccionar una hora que ya pasó para el día de hoy.", "Hora Inválida", JOptionPane.WARNING_MESSAGE);
+            return; // Detiene el registro
         }
         
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
@@ -769,15 +806,28 @@ public class MainFrame extends JFrame {
         Cliente cliente = (Cliente) cmbCliente.getSelectedItem();
         if (cancha == null || cliente == null) return;
         
-        // --- INICIO DE MODIFICACIÓN ---
-        // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
         LocalDate fecha = parseDateChooser(jdcFecha); // Lee del JDateChooser
-        // --- FIN DE MODIFICACIÓN ---
         
         LocalTime hora = parseHora(ftfHora.getText());
         if (fecha == null || hora == null) {
             JOptionPane.showMessageDialog(this, "Fecha u hora no válida para calcular.");
             return;
+        }
+        
+        
+        // --- VALIDACIÓN DE HORA PASADA ---
+        LocalDate hoy = LocalDate.now();
+        LocalTime ahora = LocalTime.now();
+        
+        
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, "No se puede calcular el costo para una día que ya pasó.", "Fecha Inválida", JOptionPane.WARNING_MESSAGE);
+            return; // Detiene el cálculo
+        }
+        
+        if (fecha.equals(hoy) && hora.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this, "No se puede calcular el costo para una hora que ya pasó.", "Hora Inválida", JOptionPane.WARNING_MESSAGE);
+            return; // Detiene el cálculo
         }
         
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
