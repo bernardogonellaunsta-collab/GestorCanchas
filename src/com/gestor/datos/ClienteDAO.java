@@ -64,7 +64,53 @@ public class ClienteDAO {
         return idGenerado;
     }
     
-    // Aquí deberíamos crear los otros métodos:
-    // public void modificarCliente(Cliente cliente) { ... }
-    // public void eliminarCliente(int idCliente) { ... }
+    /**
+     * (NUEVO - IMPLEMENTADO)
+     * Modifica un cliente existente en la base de datos.
+     * @param cliente El objeto Cliente con los datos actualizados (incluyendo el ID)
+     * @return true si la actualización fue exitosa, false si no
+     */
+    public boolean modificarCliente(Cliente cliente) {
+        String sql = "UPDATE cliente SET nombre = ?, telefono = ? WHERE id = ?";
+        
+        try (Connection cn = ConexionDB.conectar();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, cliente.getNombreCliente());
+            ps.setString(2, cliente.getTelefono());
+            ps.setInt(3, cliente.getIdCliente());
+
+            int filasAfectadas = ps.executeUpdate();
+            return filasAfectadas > 0; // Devuelve true si se actualizó al menos 1 fila
+
+        } catch (Exception e) {
+            System.err.println("Error al modificar el cliente: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * (NUEVO - IMPLEMENTADO)
+     * Elimina un cliente de la base de datos.
+     * Fallará si el cliente tiene reservas asociadas (por restricción de Foreign Key).
+     * @param idCliente El ID del cliente a eliminar
+     * @return true si la eliminación fue exitosa, false si no
+     */
+    public boolean eliminarCliente(int idCliente) {
+        String sql = "DELETE FROM cliente WHERE id = ?";
+        
+        try (Connection cn = ConexionDB.conectar();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idCliente);
+            int filasAfectadas = ps.executeUpdate();
+            return filasAfectadas > 0; // Devuelve true si se eliminó al menos 1 fila
+
+        } catch (Exception e) {
+            // Esto es importante: si el cliente tiene reservas, la BD lanzará un error
+            // de restricción (Foreign Key constraint violation), que será capturado aquí.
+            System.err.println("Error al eliminar el cliente (puede tener reservas asociadas): " + e.getMessage());
+            return false;
+        }
+    }
 }

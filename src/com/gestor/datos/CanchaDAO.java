@@ -75,16 +75,54 @@ public class CanchaDAO {
         return idGenerado;
     }
 
-    // TODO: Implementar métodos para modificar y eliminar
-    /*
+    /**
+     * (NUEVO - IMPLEMENTADO)
+     * Modifica una cancha existente en la base de datos.
+     * @param cancha El objeto Cancha con los datos actualizados (incluyendo el ID)
+     * @return true si la actualización fue exitosa, false si no
+     */
     public boolean modificarCancha(Cancha cancha) {
-        // ... lógica UPDATE cancha SET ... WHERE id_cancha = ?
-        return false;
+        String sql = "UPDATE cancha SET nombre = ?, deporte = ?, precio_por_hora = ? WHERE id_cancha = ?";
+        
+        try (Connection cn = ConexionDB.conectar();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setString(1, cancha.getNombre());
+            ps.setString(2, cancha.getDeporte());
+            ps.setDouble(3, cancha.getPrecioPorHora());
+            ps.setInt(4, cancha.getIdCancha());
+
+            int filasAfectadas = ps.executeUpdate();
+            return filasAfectadas > 0; // Devuelve true si se actualizó al menos 1 fila
+
+        } catch (SQLException e) {
+            System.err.println("Error al modificar la cancha: " + e.getMessage());
+            return false;
+        }
     }
 
+    /**
+     * (NUEVO - IMPLEMENTADO)
+     * Elimina una cancha de la base de datos.
+     * Fallará si la cancha tiene reservas asociadas (por restricción de Foreign Key).
+     * @param idCancha El ID de la cancha a eliminar
+     * @return true si la eliminación fue exitosa, false si no
+     */
     public boolean eliminarCancha(int idCancha) {
-        // ... lógica DELETE FROM cancha WHERE id_cancha = ?
-        return false;
+        String sql = "DELETE FROM cancha WHERE id_cancha = ?";
+        
+        try (Connection cn = ConexionDB.conectar();
+             PreparedStatement ps = cn.prepareStatement(sql)) {
+
+            ps.setInt(1, idCancha);
+            int filasAfectadas = ps.executeUpdate();
+            return filasAfectadas > 0; // Devuelve true si se eliminó al menos 1 fila
+
+        } catch (SQLException e) {
+            // Esto es importante: si la cancha tiene reservas, la BD lanzará un error
+            // de restricción (Foreign Key constraint violation), que será capturado aquí.
+            System.err.println("Error al eliminar la cancha (puede tener reservas asociadas): " + e.getMessage());
+            return false;
+        }
     }
-    */
 }
