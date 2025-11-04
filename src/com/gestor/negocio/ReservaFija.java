@@ -1,8 +1,6 @@
 package com.gestor.negocio;
 
 
-import com.gestor.negocio.Cancha;
-import com.gestor.negocio.Cliente;
 import java.time.*;
 import java.util.*;
 
@@ -49,13 +47,6 @@ public class ReservaFija extends Reserva {
     @Override
     public double calcularCostoTotal() {
         if (cancha == null) return 0.0;
-        long semanas = 0;
-        if (fechaFin != null) {
-            semanas = java.time.temporal.ChronoUnit.WEEKS.between(fechaHoraInicio.toLocalDate(), fechaFin) + 1;
-            if (semanas < 1) semanas = 1;
-        } else {
-            semanas = 1;
-        }
         double horas = duracionMinutos / 60.0;
         double total = cancha.getPrecioPorHora() * horas ;
         return total * (1.0 - descuentoAplicado);

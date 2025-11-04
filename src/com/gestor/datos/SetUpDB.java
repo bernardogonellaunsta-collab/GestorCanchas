@@ -56,10 +56,6 @@ public class SetUpDB {
         }
     }
     
-    /**
-     * Inserta los horarios por defecto para toda la semana (de 8 a 23, 60 min)
-     * si y solo si la tabla 'horario_laboral' está vacía.
-     */
     private static void poblarHorariosPorDefecto(Connection cn) {
         String sqlCheck = "SELECT COUNT(*) FROM horario_laboral";
         String sqlInsert = "INSERT INTO horario_laboral (dia_semana, hora_apertura, hora_cierre, duracion_turno_min) VALUES (?, '08:00:00', '23:00:00', 60)";

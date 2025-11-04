@@ -27,9 +27,8 @@ public class Cancha {
     public double getPrecioPorHora() { return precioPorHora; }
     public void setPrecioPorHora(double precioPorHora) { this.precioPorHora = precioPorHora; }
 
-    @Override
 
-    public String toString() {
+    /*public String toString() {
         return nombre;
-    }
+    }*/
 }

@@ -53,23 +53,8 @@ public abstract class Reserva {
         return fechaHoraInicio.plusMinutes(getDuracionMinutos());
     }
 
-    /**
-     * (CORREGIDO OTRA VEZ)
-     * Lógica de negocio pura: determina si esta reserva se pisa con otra.
-     * La lógica de "no solapamiento" es:
-     * (this.fin <= otra.inicio) O (otra.fin <= this.inicio)
-     * Por lo tanto, el solapamiento es la negación de eso.
-     *
-     * (CORRECCIÓN FINAL)
-     * La lógica anterior `otra.getFechaHoraFin().isEqual(this.fechaHoraInicio)` [20:00 == 20:00]
-     * causaba que dos reservas "tocándose" (19-20 y 20-21) no se solapen.
-     * La nueva lógica `!A.isBefore(B)` es lo mismo que `A >= B`.
-     * Un solapamiento real ocurre si:
-     * this.inicio < otra.fin Y this.fin > otra.inicio
-     */
     public boolean solapa(Reserva otra) {
         
-        // --- INICIO DE CORRECCIÓN ---
         if (this.cancha != null && otra.cancha != null) {
             if (this.cancha.getIdCancha() != otra.cancha.getIdCancha()) {
                 return false; // Son canchas diferentes, no pueden solapar.
@@ -98,4 +83,3 @@ public abstract class Reserva {
     // --- TODO EL CÓDIGO DE PERSISTENCIA (loadAll, saveAll, etc.) FUE ELIMINADO ---
     // --- Esa lógica ahora pertenece a ReservaDAO en la capa de datos. ---
 }
-
