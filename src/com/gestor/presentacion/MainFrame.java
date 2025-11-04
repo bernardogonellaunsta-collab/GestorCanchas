@@ -9,6 +9,12 @@ import com.gestor.negocio.Reserva;
 import com.gestor.negocio.ReservaFija;
 import com.gestor.negocio.ReservaSimple;
 
+// --- INICIO DE IMPORTACIONES MODIFICADAS ---
+import com.toedter.calendar.JDateChooser; // Componente de calendario
+import java.time.ZoneId; // Para convertir Date a LocalDate
+import java.util.Date; // Para interactuar con JDateChooser
+// --- FIN DE IMPORTACIONES MODIFICADAS ---
+
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -23,7 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * (ACTUALIZADO)
+ * (ACTUALIZADO CON JDateChooser)
  * GUI principal. Refactorizada para usar la Capa de Datos (DAO).
  * Delega todas las operaciones de datos a las clases DAO (Capa de Datos).
  * Maneja los objetos de la Capa de Negocio (Cliente, Cancha, Reserva).
@@ -31,6 +37,7 @@ import java.util.List;
  * Incluye lógica para cancelación de reservas simples vs. fijas (en grupo).
  * (CORREGIDO) Disponibilidad usa JTable.
  * (CORREGIDO) RegistrarReserva ahora recarga la lista.
+ * (MODIFICADO) Usa JDateChooser para la selección de fechas.
  */
 public class MainFrame extends JFrame {
 
@@ -54,15 +61,25 @@ public class MainFrame extends JFrame {
     public JComboBox<String> cmbDeporteReserva; 
     public JComboBox<Cancha> cmbCancha;
     public JComboBox<Cliente> cmbCliente;
-    public JFormattedTextField ftfFecha; // dd/MM/yyyy
-    public JFormattedTextField ftfHora;  // HH:mm
+    
+    // --- INICIO DE CAMPOS MODIFICADOS ---
+    // public JFormattedTextField ftfFecha; // Reemplazado
+    public JDateChooser jdcFecha; // Nuevo componente de calendario
+    public JFormattedTextField ftfHora;  // HH:mm (se mantiene)
+    // --- FIN DE CAMPOS MODIFICADOS ---
+
     public JSpinner spDuracion;          // minutos
     public JRadioButton rbSimple;
     public JRadioButton rbFija;
     public ButtonGroup bgTipo;
+    
+    // --- INICIO DE CAMPOS MODIFICADOS ---
     public JComboBox<DayOfWeek> cmbDiaSemana;
-    public JFormattedTextField ftfFechaFin; // dd/MM/yyyy
+    // public JFormattedTextField ftfFechaFin; // Reemplazado
+    public JDateChooser jdcFechaFin; // Nuevo componente de calendario
     public JSpinner spDescuento;            // 0..1
+    // --- FIN DE CAMPOS MODIFICADOS ---
+
 
     // Atributos para ocultar/mostrar labels de reserva fija
     private JLabel lblDiaSemana;
@@ -79,9 +96,11 @@ public class MainFrame extends JFrame {
     // ---- Disponibilidad ----
     private JPanel panelDisponibilidad;
     public JComboBox<Cancha> cmbCanchaDisp;
-    public JFormattedTextField ftfFechaDisp;
+    // --- INICIO DE CAMPOS MODIFICADOS ---
+    // public JFormattedTextField ftfFechaDisp; // Reemplazado
+    public JDateChooser jdcFechaDisp; // Nuevo componente de calendario
+    // --- FIN DE CAMPOS MODIFICADOS ---
     public JButton btnConsultarDisponibilidad;
-    // (MODIFICADO) Cambiado de JList a JTable
     public JTable tblHorasLibres;
     public DefaultTableModel modelHoras;
 
@@ -104,6 +123,7 @@ public class MainFrame extends JFrame {
     public DefaultTableModel modelClientes;
 
     // ---- Utiles ----
+    // F_FECHA ya no es necesario para parsear, pero se mantiene para F_FECHA_HORA_MOSTRAR
     private static final DateTimeFormatter F_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter F_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter F_FECHA_HORA_MOSTRAR
@@ -193,6 +213,7 @@ public class MainFrame extends JFrame {
      * (MODIFICADO)
      * Construye el panel de Reservas, añadiendo lógica para
      * mostrar/ocultar campos y filtrar canchas.
+     * Reemplaza JFormattedTextField por JDateChooser.
      */
     private void buildPanelReservas() {
         panelReservas = new JPanel(new BorderLayout(10,10));
@@ -211,9 +232,16 @@ public class MainFrame extends JFrame {
         cmbDeporteReserva.addActionListener(e -> filtrarCanchasPorDeporte());
         
         cmbCliente = new JComboBox<>();
-        ftfFecha = new JFormattedTextField(F_FECHA.toFormat());
-        ftfFecha.setColumns(8);
-        ftfFecha.setText(LocalDate.now().format(F_FECHA));
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // ftfFecha = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
+        // ftfFecha.setColumns(8);
+        // ftfFecha.setText(LocalDate.now().format(F_FECHA));
+        jdcFecha = new JDateChooser();
+        jdcFecha.setDate(new Date()); // Valor por defecto: hoy
+        jdcFecha.setPreferredSize(new Dimension(120, jdcFecha.getPreferredSize().height));
+        // --- FIN DE MODIFICACIÓN ---
+
         ftfHora = new JFormattedTextField(F_HORA.toFormat());
         ftfHora.setColumns(5);
         ftfHora.setText("19:00");
@@ -231,8 +259,14 @@ public class MainFrame extends JFrame {
 
         // Instanciar los componentes (inputs y labels)
         cmbDiaSemana = new JComboBox<>(DayOfWeek.values());
-        ftfFechaFin  = new JFormattedTextField(F_FECHA.toFormat());
-        ftfFechaFin.setColumns(8);
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // ftfFechaFin  = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
+        // ftfFechaFin.setColumns(8);
+        jdcFechaFin = new JDateChooser();
+        jdcFechaFin.setPreferredSize(new Dimension(120, jdcFechaFin.getPreferredSize().height));
+        // --- FIN DE MODIFICACIÓN ---
+
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
         
         // Instanciar los JLabels (usando los atributos de clase)
@@ -245,7 +279,12 @@ public class MainFrame extends JFrame {
         addRow(form, gc, 1, new JLabel("Deporte:"), cmbDeporteReserva);
         addRow(form, gc, 2, new JLabel("Cancha:"), cmbCancha);
         addRow(form, gc, 3, new JLabel("Cliente:"), cmbCliente);
-        addRow(form, gc, 4, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha);
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // addRow(form, gc, 4, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha); // Reemplazado
+        addRow(form, gc, 4, new JLabel("Fecha:"), jdcFecha); // Etiqueta simplificada
+        // --- FIN DE MODIFICACIÓN ---
+        
         addRow(form, gc, 5, new JLabel("Hora (HH:mm):"), ftfHora);
         addRow(form, gc, 6, new JLabel("Duración (min):"), spDuracion);
 
@@ -255,7 +294,12 @@ public class MainFrame extends JFrame {
 
         // Usar los atributos de JLabel en addRow
         addRow(form, gc, 8, lblDiaSemana, cmbDiaSemana);
-        addRow(form, gc, 9, lblFechaFin, ftfFechaFin);
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // addRow(form, gc, 9, lblFechaFin, ftfFechaFin); // Reemplazado
+        addRow(form, gc, 9, lblFechaFin, jdcFechaFin);
+        // --- FIN DE MODIFICACIÓN ---
+        
         addRow(form, gc, 10, lblDescuento, spDescuento);
 
         JPanel acciones = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
@@ -294,6 +338,7 @@ public class MainFrame extends JFrame {
     /**
      * (MODIFICADO)
      * Reemplaza la JList por una JTable para mostrar la disponibilidad.
+     * Reemplaza JFormattedTextField por JDateChooser.
      */
     private void buildPanelDisponibilidad() {
         panelDisponibilidad = new JPanel(new BorderLayout(10,10));
@@ -301,22 +346,30 @@ public class MainFrame extends JFrame {
         GridBagConstraints gc = baseGC();
 
         cmbCanchaDisp = new JComboBox<>();
-        ftfFechaDisp  = new JFormattedTextField(F_FECHA.toFormat());
-        ftfFechaDisp.setColumns(8);
-        ftfFechaDisp.setText(LocalDate.now().format(F_FECHA));
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // ftfFechaDisp  = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
+        // ftfFechaDisp.setColumns(8);
+        // ftfFechaDisp.setText(LocalDate.now().format(F_FECHA));
+        jdcFechaDisp = new JDateChooser();
+        jdcFechaDisp.setDate(new Date()); // Valor por defecto: hoy
+        jdcFechaDisp.setPreferredSize(new Dimension(120, jdcFechaDisp.getPreferredSize().height));
+        // --- FIN DE MODIFICACIÓN ---
+
         btnConsultarDisponibilidad = new JButton("Consultar");
 
         addRow(form, gc, 0, new JLabel("Cancha:"), cmbCanchaDisp);
-        addRow(form, gc, 1, new JLabel("Fecha (dd/MM/yyyy):"), ftfFechaDisp);
+        
+        // --- INICIO DE MODIFICACIÓN ---
+        // addRow(form, gc, 1, new JLabel("Fecha (dd/MM/yyyy):"), ftfFechaDisp); // Reemplazado
+        addRow(form, gc, 1, new JLabel("Fecha:"), jdcFechaDisp); // Etiqueta simplificada
+        // --- FIN DE MODIFICACIÓN ---
+        
         addRow(form, gc, 2, new JLabel("Acción:"), btnConsultarDisponibilidad);
 
         panelDisponibilidad.add(form, BorderLayout.NORTH);
 
-        // --- INICIO DE MODIFICACIÓN ---
-        // modelHoras = new DefaultListModel<>(); // Ya no se usa
-        // lstHorasLibres = new JList<>(modelHoras); // Ya no se usa
-        
-        // Crear JTable en su lugar
+        // Crear JTable
         String[] cols = {"Horario de Inicio"};
         modelHoras = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
@@ -324,7 +377,6 @@ public class MainFrame extends JFrame {
         tblHorasLibres = new JTable(modelHoras);
         
         panelDisponibilidad.add(new JScrollPane(tblHorasLibres), BorderLayout.CENTER);
-        // --- FIN DE MODIFICACIÓN ---
 
         btnConsultarDisponibilidad.addActionListener(e -> onConsultarDisponibilidad());
 
@@ -416,7 +468,10 @@ public class MainFrame extends JFrame {
         cmbDiaSemana.setVisible(esFija);
         
         lblFechaFin.setVisible(esFija);
-        ftfFechaFin.setVisible(esFija);
+        // --- INICIO DE MODIFICACIÓN ---
+        // ftfFechaFin.setVisible(esFija); // Reemplazado
+        jdcFechaFin.setVisible(esFija);
+        // --- FIN DE MODIFICACIÓN ---
         
         lblDescuento.setVisible(esFija);
         spDescuento.setVisible(esFija);
@@ -462,11 +517,12 @@ public class MainFrame extends JFrame {
 
 
     /**
-     * (REFACTORIZADO Y CORREGIDO)
+     * (MODIFICADO)
      * Crea un objeto de negocio (Reserva) y lo pasa al DAO para guardarlo.
      * Ya no contiene SQL.
      * (CORRECCIÓN) Llama a onListarReservasDia() después de una
      * inserción simple para resincronizar la tabla.
+     * (MODIFICADO) Lee la fecha desde JDateChooser.
      */
     private void onRegistrarReserva() {
         // 1. Obtener datos de la GUI
@@ -478,11 +534,19 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        LocalDate fecha = parseFecha(ftfFecha.getText());
+        // --- INICIO DE MODIFICACIÓN ---
+        // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
+        LocalDate fecha = parseDateChooser(jdcFecha); // Lee del JDateChooser
+        // --- FIN DE MODIFICACIÓN ---
+        
         LocalTime hora = parseHora(ftfHora.getText());
         
-        if (fecha == null || hora == null) {
-             JOptionPane.showMessageDialog(this, "La fecha u hora ingresada no es válida.");
+        if (fecha == null) {
+             JOptionPane.showMessageDialog(this, "La fecha ingresada no es válida.");
+             return;
+        }
+        if (hora == null) {
+             JOptionPane.showMessageDialog(this, "La hora ingresada no es válida (HH:mm).");
              return;
         }
         
@@ -494,7 +558,11 @@ public class MainFrame extends JFrame {
         if (rbSimple.isSelected()) {
             nuevaReserva = new ReservaSimple(0, inicio, cancha, cliente, duracion);
         } else {
-            LocalDate fechaFin = parseFecha(ftfFechaFin.getText());
+            // --- INICIO DE MODIFICACIÓN ---
+            // LocalDate fechaFin = parseFecha(ftfFechaFin.getText()); // Reemplazado
+            LocalDate fechaFin = parseDateChooser(jdcFechaFin); // Lee del JDateChooser
+            // --- FIN DE MODIFICACIÓN ---
+
             if (fechaFin == null) {
                  JOptionPane.showMessageDialog(this, "La fecha de fin para la reserva fija no es válida.");
                 return;
@@ -517,12 +585,7 @@ public class MainFrame extends JFrame {
             if (nuevaReserva instanceof ReservaSimple) {
                 // Éxito de Reserva Simple (resultado es el idGenerado)
                 JOptionPane.showMessageDialog(this, "Reserva guardada correctamente.");
-
-                // --- INICIO DE CORRECCIÓN (Bug 19hs vs 20hs) ---
-                // No agregamos la fila manualmente, recargamos toda la lista del día
-                // para asegurar que la vista esté 100% sincronizada con la BD.
                 onListarReservasDia(); 
-                // --- FIN DE CORRECCIÓN ---
                 
             } else {
                 // Éxito de Reserva Fija (resultado es la cantidad de filas)
@@ -639,28 +702,44 @@ public class MainFrame extends JFrame {
 
 
     /**
+     * (MODIFICADO)
      * Lista las reservas de un día específico usando el DAO.
+     * Lee la fecha desde JDateChooser.
      */
     private void onListarReservasDia() {
-        LocalDate fecha = parseFecha(ftfFecha.getText());
-        if (fecha == null) return;
+        // --- INICIO DE MODIFICACIÓN ---
+        // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
+        LocalDate fecha = parseDateChooser(jdcFecha);
+        if (fecha == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione una fecha válida para listar.");
+            return;
+        }
+        // --- FIN DE MODIFICACIÓN ---
         
         // Llama al método que puebla la lista interna y la tabla
         cargarReservasDelDia(fecha);
     }
 
     /**
-     * (REFACTORIZADO)
+     * (MODIFICADO)
      * Calcula el costo (sin guardar) usando el objeto de negocio.
+     * Lee la fecha desde JDateChooser.
      */
     private void onCalcularCosto() {
         Cancha cancha = (Cancha) cmbCancha.getSelectedItem();
         Cliente cliente = (Cliente) cmbCliente.getSelectedItem();
         if (cancha == null || cliente == null) return;
         
-        LocalDate fecha = parseFecha(ftfFecha.getText());
+        // --- INICIO DE MODIFICACIÓN ---
+        // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
+        LocalDate fecha = parseDateChooser(jdcFecha); // Lee del JDateChooser
+        // --- FIN DE MODIFICACIÓN ---
+        
         LocalTime hora = parseHora(ftfHora.getText());
-        if (fecha == null || hora == null) return;
+        if (fecha == null || hora == null) {
+            JOptionPane.showMessageDialog(this, "Fecha u hora no válida para calcular.");
+            return;
+        }
         
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
 
@@ -669,7 +748,11 @@ public class MainFrame extends JFrame {
             ReservaSimple tmp = new ReservaSimple(0, inicio, cancha, cliente, (int) spDuracion.getValue());
             costo = tmp.calcularCostoTotal();
         } else {
-            LocalDate fechaFin = parseFecha(ftfFechaFin.getText());
+            // --- INICIO DE MODIFICACIÓN ---
+            // LocalDate fechaFin = parseFecha(ftfFechaFin.getText()); // Reemplazado
+            LocalDate fechaFin = parseDateChooser(jdcFechaFin); // Lee del JDateChooser
+            // --- FIN DE MODIFICACIÓN ---
+
             if (fechaFin == null) {
                 JOptionPane.showMessageDialog(this, "La fecha de fin no es válida para calcular el costo.");
                 return;
@@ -701,26 +784,29 @@ public class MainFrame extends JFrame {
     /**
      * (MODIFICADO)
      * Consulta disponibilidad usando el DAO y puebla la JTable.
+     * Lee la fecha desde JDateChooser.
      */
     private void onConsultarDisponibilidad() {
         Cancha cancha = (Cancha) cmbCanchaDisp.getSelectedItem();
         if (cancha == null) return;
         
-        LocalDate fecha = parseFecha(ftfFechaDisp.getText());
-        if (fecha == null) return;
+        // --- INICIO DE MODIFICACIÓN ---
+        // LocalDate fecha = parseFecha(ftfFechaDisp.getText()); // Reemplazado
+        LocalDate fecha = parseDateChooser(jdcFechaDisp); // Lee del JDateChooser
+        if (fecha == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione una fecha válida para consultar.");
+            return;
+        }
+        // --- FIN DE MODIFICACIÓN ---
         
         // Llama al DAO
         List<LocalTime> libres = reservaDAO.consultarDisponibilidad(cancha.getIdCancha(), fecha);
         
-        // --- INICIO DE MODIFICACIÓN ---
-        // modelHoras.clear(); // Ya no se usa
         modelHoras.setRowCount(0); // Limpia la tabla
         
         for (LocalTime t : libres) {
-            // modelHoras.addElement(t); // Ya no se usa
             modelHoras.addRow(new Object[]{ t.format(F_HORA) }); // Añade fila a la tabla
         }
-        // --- FIN DE MODIFICACIÓN ---
     }
 
     /**
@@ -800,7 +886,7 @@ public class MainFrame extends JFrame {
        
 
     // -----------------------------------------------------------
-    // Utilidades de la GUI (Sin cambios)
+    // Utilidades de la GUI
     // -----------------------------------------------------------
     
     private GridBagConstraints baseGC() {
@@ -821,13 +907,22 @@ public class MainFrame extends JFrame {
         panel.add(field, f);
     }
 
-    private LocalDate parseFecha(String s) { 
-        try {
-            return LocalDate.parse(s.trim(), F_FECHA); 
-        } catch (DateTimeParseException e) {
-            return null; // Devuelve null si el formato es incorrecto
+    // --- MÉTODO parseFecha(String s) ELIMINADO ---
+
+    /**
+     * (NUEVO MÉTODO)
+     * Convierte la fecha de un JDateChooser a LocalDate.
+     * @param chooser El componente JDateChooser
+     * @return El LocalDate, o null si no se seleccionó fecha.
+     */
+    private LocalDate parseDateChooser(JDateChooser chooser) {
+        Date date = chooser.getDate();
+        if (date == null) {
+            return null;
         }
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
+    
     private LocalTime parseHora(String s)  { 
         try {
             return LocalTime.parse(s.trim(), F_HORA); 
@@ -838,9 +933,7 @@ public class MainFrame extends JFrame {
     
     /**
      * Agrega una fila a la tabla de reservas formateando las fechas y costos.
-     * (CORREGIDO) Acepta el costo como parámetro, ya que el costo
-     * de r.calcularCostoTotal() puede ser diferente al guardado en la BD
-     * (especialmente para reservas fijas).
+     * (CORREGIDO) Acepta el costo como parámetro.
      */
     private void agregarFila(Reserva r, String tipo, double costoGuardado) {
         String inicioStr = r.getFechaHoraInicio().format(F_FECHA_HORA_MOSTRAR);
@@ -859,4 +952,3 @@ public class MainFrame extends JFrame {
     }
 
 }
-

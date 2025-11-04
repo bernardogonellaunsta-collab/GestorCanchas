@@ -325,7 +325,7 @@ public class ReservaDAO {
                    + "FROM reserva r "
                    + "JOIN cancha c ON r.id_cancha = c.id_cancha "
                    + "JOIN cliente cl ON r.id_cliente = cl.id "
-                   + "WHERE DATE(r.fecha_hora_inicio) = ? "
+                   + "WHERE DATE(r.fecha_hora_inicio) >= ? "
                    + "ORDER BY r.fecha_hora_inicio";
 
         try (Connection cn = ConexionDB.conectar();
