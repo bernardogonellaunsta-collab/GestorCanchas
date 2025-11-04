@@ -38,6 +38,8 @@ import java.util.List;
  * (CORREGIDO) Disponibilidad usa JTable.
  * (CORREGIDO) RegistrarReserva ahora recarga la lista.
  * (MODIFICADO) Usa JDateChooser para la selección de fechas.
+ * (CORREGIDO) JDateChooser ahora no permite seleccionar fechas pasadas.
+ * (CORREGIDO) Añadida validación para no permitir horas pasadas en el día actual.
  */
 public class MainFrame extends JFrame {
 
@@ -214,6 +216,7 @@ public class MainFrame extends JFrame {
      * Construye el panel de Reservas, añadiendo lógica para
      * mostrar/ocultar campos y filtrar canchas.
      * Reemplaza JFormattedTextField por JDateChooser.
+     * (CORREGIDO) Se restringe JDateChooser para no aceptar fechas pasadas.
      */
     private void buildPanelReservas() {
         panelReservas = new JPanel(new BorderLayout(10,10));
@@ -240,6 +243,9 @@ public class MainFrame extends JFrame {
         jdcFecha = new JDateChooser();
         jdcFecha.setDate(new Date()); // Valor por defecto: hoy
         jdcFecha.setPreferredSize(new Dimension(120, jdcFecha.getPreferredSize().height));
+        // --- INICIO DE CORRECCIÓN SOLICITADA ---
+        jdcFecha.setMinSelectableDate(new Date()); // No permitir fechas pasadas
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
         // --- FIN DE MODIFICACIÓN ---
 
         ftfHora = new JFormattedTextField(F_HORA.toFormat());
@@ -265,6 +271,9 @@ public class MainFrame extends JFrame {
         // ftfFechaFin.setColumns(8);
         jdcFechaFin = new JDateChooser();
         jdcFechaFin.setPreferredSize(new Dimension(120, jdcFechaFin.getPreferredSize().height));
+        // --- INICIO DE CORRECCIÓN SOLICITADA ---
+        jdcFechaFin.setMinSelectableDate(new Date()); // No permitir fechas pasadas
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
         // --- FIN DE MODIFICACIÓN ---
 
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
@@ -339,6 +348,7 @@ public class MainFrame extends JFrame {
      * (MODIFICADO)
      * Reemplaza la JList por una JTable para mostrar la disponibilidad.
      * Reemplaza JFormattedTextField por JDateChooser.
+     * (CORREGIDO) Se restringe JDateChooser para no aceptar fechas pasadas.
      */
     private void buildPanelDisponibilidad() {
         panelDisponibilidad = new JPanel(new BorderLayout(10,10));
@@ -354,6 +364,9 @@ public class MainFrame extends JFrame {
         jdcFechaDisp = new JDateChooser();
         jdcFechaDisp.setDate(new Date()); // Valor por defecto: hoy
         jdcFechaDisp.setPreferredSize(new Dimension(120, jdcFechaDisp.getPreferredSize().height));
+        // --- INICIO DE CORRECCIÓN SOLICITADA ---
+        jdcFechaDisp.setMinSelectableDate(new Date()); // No permitir fechas pasadas
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
         // --- FIN DE MODIFICACIÓN ---
 
         btnConsultarDisponibilidad = new JButton("Consultar");
@@ -523,6 +536,8 @@ public class MainFrame extends JFrame {
      * (CORRECCIÓN) Llama a onListarReservasDia() después de una
      * inserción simple para resincronizar la tabla.
      * (MODIFICADO) Lee la fecha desde JDateChooser.
+     * (CORREGIDO) Añade validación de fecha pasada.
+     * (CORREGIDO) Añade validación de hora pasada si la fecha es hoy.
      */
     private void onRegistrarReserva() {
         // 1. Obtener datos de la GUI
@@ -545,10 +560,33 @@ public class MainFrame extends JFrame {
              JOptionPane.showMessageDialog(this, "La fecha ingresada no es válida.");
              return;
         }
+        
+        // --- INICIO DE CORRECCIÓN SOLICITADA (Validación de Respaldo) ---
+        LocalDate hoy = LocalDate.now(ZoneId.systemDefault());
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, 
+                "La fecha de la reserva no puede ser anterior al día de hoy.", 
+                "Error de Fecha", 
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
+        
         if (hora == null) {
              JOptionPane.showMessageDialog(this, "La hora ingresada no es válida (HH:mm).");
              return;
         }
+        
+        // --- INICIO DE CORRECCIÓN HORA (Validación de Respaldo) ---
+        LocalTime ahora = LocalTime.now(ZoneId.systemDefault());
+        if (fecha.equals(hoy) && hora.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this, 
+                "La hora de la reserva no puede ser anterior a la hora actual para el día de hoy.", 
+                "Error de Hora", 
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // --- FIN DE CORRECCIÓN HORA ---
         
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
         int duracion = (int) spDuracion.getValue();
@@ -567,6 +605,17 @@ public class MainFrame extends JFrame {
                  JOptionPane.showMessageDialog(this, "La fecha de fin para la reserva fija no es válida.");
                 return;
             }
+
+            // --- INICIO DE CORRECCIÓN SOLICITADA (Validación de Respaldo) ---
+            if (fechaFin.isBefore(fecha)) {
+                JOptionPane.showMessageDialog(this, 
+                    "La fecha de FIN de la reserva fija no puede ser anterior a la fecha de INICIO.", 
+                    "Error de Fecha", 
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            // --- FIN DE CORRECCIÓN SOLICITADA ---
+
             DayOfWeek dia = (DayOfWeek) cmbDiaSemana.getSelectedItem();
             double descuento = ((Number) spDescuento.getValue()).doubleValue();
             
@@ -705,6 +754,8 @@ public class MainFrame extends JFrame {
      * (MODIFICADO)
      * Lista las reservas de un día específico usando el DAO.
      * Lee la fecha desde JDateChooser.
+     * (CORREGIDO) La validación de fecha pasada es implícita
+     * gracias a la restricción del JDateChooser.
      */
     private void onListarReservasDia() {
         // --- INICIO DE MODIFICACIÓN ---
@@ -724,6 +775,8 @@ public class MainFrame extends JFrame {
      * (MODIFICADO)
      * Calcula el costo (sin guardar) usando el objeto de negocio.
      * Lee la fecha desde JDateChooser.
+     * (CORREGIDO) Añade validación de fecha pasada.
+     * (CORREGIDO) Añade validación de hora pasada si la fecha es hoy.
      */
     private void onCalcularCosto() {
         Cancha cancha = (Cancha) cmbCancha.getSelectedItem();
@@ -740,6 +793,28 @@ public class MainFrame extends JFrame {
             JOptionPane.showMessageDialog(this, "Fecha u hora no válida para calcular.");
             return;
         }
+
+        // --- INICIO DE CORRECCIÓN SOLICITADA (Validación) ---
+        LocalDate hoy = LocalDate.now(ZoneId.systemDefault());
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, 
+                "No se puede calcular el costo para una fecha pasada.", 
+                "Error de Fecha", 
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
+        
+        // --- INICIO DE CORRECCIÓN HORA (Validación) ---
+        LocalTime ahora = LocalTime.now(ZoneId.systemDefault());
+        if (fecha.equals(hoy) && hora.isBefore(ahora)) {
+            JOptionPane.showMessageDialog(this, 
+                "No se puede calcular el costo para una hora que ya pasó.", 
+                "Error de Hora", 
+                JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        // --- FIN DE CORRECCIÓN HORA ---
         
         LocalDateTime inicio = LocalDateTime.of(fecha, hora);
 
@@ -757,6 +832,16 @@ public class MainFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "La fecha de fin no es válida para calcular el costo.");
                 return;
             }
+
+            // --- INICIO DE CORRECCIÓN SOLICITADA (Validación) ---
+            if (fechaFin.isBefore(fecha)) {
+                JOptionPane.showMessageDialog(this, 
+                    "La fecha de FIN de la reserva fija no puede ser anterior a la fecha de INICIO.", 
+                    "Error de Fecha", 
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            // --- FIN DE CORRECCIÓN SOLICITADA ---
             
             // (CORREGIDO) Instancia de Fija ahora usa la duración y descuento correctos
             ReservaFija tmp = new ReservaFija(0, inicio, cancha, cliente,
@@ -785,6 +870,7 @@ public class MainFrame extends JFrame {
      * (MODIFICADO)
      * Consulta disponibilidad usando el DAO y puebla la JTable.
      * Lee la fecha desde JDateChooser.
+     * (CORREGIDO) Añade validación de fecha pasada.
      */
     private void onConsultarDisponibilidad() {
         Cancha cancha = (Cancha) cmbCanchaDisp.getSelectedItem();
@@ -798,6 +884,18 @@ public class MainFrame extends JFrame {
             return;
         }
         // --- FIN DE MODIFICACIÓN ---
+        
+        // --- INICIO DE CORRECCIÓN SOLICITADA (Validación) ---
+        LocalDate hoy = LocalDate.now(ZoneId.systemDefault());
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, 
+                "No se puede consultar disponibilidad para una fecha anterior al día de hoy.", 
+                "Error de Fecha", 
+                JOptionPane.WARNING_MESSAGE);
+            modelHoras.setRowCount(0); // Limpia la tabla
+            return;
+        }
+        // --- FIN DE CORRECCIÓN SOLICITADA ---
         
         // Llama al DAO
         List<LocalTime> libres = reservaDAO.consultarDisponibilidad(cancha.getIdCancha(), fecha);
@@ -920,6 +1018,7 @@ public class MainFrame extends JFrame {
         if (date == null) {
             return null;
         }
+        // --- CORRECCIÓN: Usar systemDefault() para consistencia ---
         return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     }
     
@@ -952,3 +1051,4 @@ public class MainFrame extends JFrame {
     }
 
 }
+
