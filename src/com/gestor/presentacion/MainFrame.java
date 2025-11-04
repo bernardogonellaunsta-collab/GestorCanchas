@@ -60,7 +60,7 @@ public class MainFrame extends JFrame {
 
     // ---- Reservas ----
     private JPanel panelReservas;
-    public JTextField txtIdReserva;
+    //public JTextField txtIdReserva;
     public JComboBox<String> cmbDeporteReserva; 
     public JComboBox<Cancha> cmbCancha;
     public JComboBox<Cliente> cmbCliente;
@@ -92,7 +92,7 @@ public class MainFrame extends JFrame {
     public JButton btnCalcularCosto;
     public JButton btnRegistrarReserva;
     public JButton btnCancelarReserva;
-    public JButton btnListarReservasDia;
+    public JButton btnListarReservas;
     public JTable tblReservas;
     public DefaultTableModel modelReservas;
 
@@ -234,9 +234,9 @@ public class MainFrame extends JFrame {
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        txtIdReserva = new JTextField(10);
+        /*txtIdReserva = new JTextField(10);
         txtIdReserva.setText("(autogenerado)");
-        txtIdReserva.setEnabled(false); 
+        txtIdReserva.setEnabled(false); */
         
         // Combo para filtrar deporte en Reservas
         cmbDeporteReserva = new JComboBox<>(DEPORTES_PARA_FILTRO);
@@ -293,7 +293,7 @@ public class MainFrame extends JFrame {
         lblDescuento = new JLabel("Descuento 0..1 (fija):");
         
         // Fila 0..N
-        addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
+        //addRow(form, gc, 0, new JLabel("ID Reserva:"), txtIdReserva);
         addRow(form, gc, 1, new JLabel("Deporte:"), cmbDeporteReserva);
         addRow(form, gc, 2, new JLabel("Cancha:"), cmbCancha);
         addRow(form, gc, 3, new JLabel("Cliente:"), cmbCliente);
@@ -324,11 +324,11 @@ public class MainFrame extends JFrame {
         btnCalcularCosto = new JButton("Calcular costo");
         btnRegistrarReserva = new JButton("Registrar");
         btnCancelarReserva = new JButton("Cancelar selección");
-        btnListarReservasDia = new JButton("Listar del día");
+        btnListarReservas = new JButton("Listar");
         acciones.add(btnCalcularCosto);
         acciones.add(btnRegistrarReserva);
         acciones.add(btnCancelarReserva);
-        acciones.add(btnListarReservasDia);
+        acciones.add(btnListarReservas);
         addRow(form, gc, 11, new JLabel("Acciones:"), acciones);
 
         panelReservas.add(form, BorderLayout.NORTH);
@@ -344,7 +344,7 @@ public class MainFrame extends JFrame {
         // Listeners
         btnRegistrarReserva.addActionListener(e -> onRegistrarReserva());
         btnCancelarReserva.addActionListener(e -> onCancelarReserva());
-        btnListarReservasDia.addActionListener(e -> onListarReservasDia());
+        btnListarReservas.addActionListener(e -> onListarReservasDia());
         btnCalcularCosto.addActionListener(e -> onCalcularCosto());
 
         // Llamada inicial para ocultar los campos al arrancar
