@@ -14,9 +14,6 @@ public class ReservaSimple extends Reserva {
         super();
     }
 
-    /**
-     * Constructor MODIFICADO para incluir el idGrupoFija (opcional).
-     */
     public ReservaSimple(int idReserva, LocalDateTime fechaHoraInicio, Cancha cancha, Cliente cliente, int duracionMinutos, Integer idGrupoFija) {
         super(idReserva, fechaHoraInicio, cancha, cliente);
         this.duracionMinutos = duracionMinutos;
