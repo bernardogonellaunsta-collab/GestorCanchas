@@ -26,7 +26,6 @@ public class SetUpDB {
 
     /**
      * Método público que inicia la verificación y creación de la BD.
-     * (ACTUALIZADO) Llama a poblarHorariosPorDefecto.
      */
     public static void verificarYCrearBD() {
         try (Connection cn = DriverManager.getConnection(URL_SERVER, USER, PASSWORD);
@@ -35,39 +34,29 @@ public class SetUpDB {
             System.out.println("Conectado al servidor MySQL. Verificando base de datos...");
             String sqlScript = new String(Files.readAllBytes(Paths.get(SCRIPT_PATH)));
 
-            // Eliminar comentarios SQL (opcional, pero más limpio)
-            //sqlScript = sqlScript.replaceAll("--.*\\n", "");
-
             // Separar los comandos por punto y coma
             String[] commands = sqlScript.split(";");
 
             for (String command : commands) {
                 String trimmedCommand = command.trim();
                 if (!trimmedCommand.isEmpty()) {
-                    // System.out.println("Ejecutando: " + trimmedCommand.substring(0, Math.min(trimmedCommand.length(), 60)) + "...");
                     st.execute(trimmedCommand);
                 }
             }
             System.out.println("✅ Base de datos y tablas verificadas/creadas.");
             
-            // --- INICIO DE MODIFICACIÓN ---
-            // 7. (NUEVO) Poblar horarios por defecto si la tabla está vacía
+            // 7. Poblar horarios por defecto si la tabla está vacía
             poblarHorariosPorDefecto(cn);
-            // --- FIN DE MODIFICACIÓN ---
 
         } catch (SQLException e) {
             System.err.println("❌ Error de SQL durante el setup: " + e.getMessage());
-            // Opcional: mostrar un popup de error
-            // javax.swing.JOptionPane.showMessageDialog(null, "Error al configurar la BD: " + e.getMessage(), "Error de Base de Datos", javax.swing.JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
             System.err.println("❌ Error: No se pudo leer el archivo 'schema.sql'. " + e.getMessage());
             System.err.println("Asegúrate de que 'schema.sql' esté en la raíz del proyecto.");
-            // javax.swing.JOptionPane.showMessageDialog(null, "Error: No se encontró 'schema.sql'", "Error de Configuración", javax.swing.JOptionPane.ERROR_MESSAGE);
         }
     }
     
     /**
-     * (NUEVO)
      * Inserta los horarios por defecto para toda la semana (de 8 a 23, 60 min)
      * si y solo si la tabla 'horario_laboral' está vacía.
      */

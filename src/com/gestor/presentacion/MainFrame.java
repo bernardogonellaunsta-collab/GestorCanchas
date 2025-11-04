@@ -29,18 +29,6 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * (ACTUALIZADO CON JDateChooser)
- * GUI principal. Refactorizada para usar la Capa de Datos (DAO).
- * Delega todas las operaciones de datos a las clases DAO (Capa de Datos).
- * Maneja los objetos de la Capa de Negocio (Cliente, Cancha, Reserva).
- * Incluye lógica para ocultar/mostrar campos y filtrar combos.
- * Incluye lógica para cancelación de reservas simples vs. fijas (en grupo).
- * (CORREGIDO) Disponibilidad usa JTable.
- * (CORREGIDO) RegistrarReserva ahora recarga la lista.
- * (NUEVO) Agregada funcionalidad para Modificar y Eliminar Canchas.
- * (NUEVO) Agregada funcionalidad para Modificar y Eliminar Clientes.
- */
 public class MainFrame extends JFrame {
 
     // ---- Datos en memoria para la GUI (cacheados de la BD) ----
@@ -191,7 +179,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (REFACTORIZADO)
      * Carga canchas desde el DAO y las pone en la GUI.
      */
     private void cargarCanchasDesdeDB() {
@@ -220,10 +207,8 @@ public class MainFrame extends JFrame {
     // -----------------------------------------------------------
     
     /**
-     * (MODIFICADO)
      * Construye el panel de Reservas, añadiendo lógica para
      * mostrar/ocultar campos y filtrar canchas.
-     * Reemplaza JFormattedTextField por JDateChooser.
      */
     private void buildPanelReservas() {
         panelReservas = new JPanel(new BorderLayout(10,10));
@@ -534,7 +519,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (NUEVO MÉTODO)
      * Filtra la lista de canchas en el combo 'cmbCancha'
      * basado en el deporte seleccionado en 'cmbDeporteReserva'.
      */
@@ -897,10 +881,6 @@ public class MainFrame extends JFrame {
             // Refresca el combo de filtro en reservas
             filtrarCanchasPorDeporte();
             
-            // txtIdCancha.setText(String.valueOf(idGenerado)); // No es necesario, onLimpiar lo hace
-            // txtNombreCancha.setText("");
-            // cmbDeporteCancha.setSelectedIndex(0);
-            // ftfPrecioHora.setValue(null);
             onLimpiarCancha(); // Limpia el formulario
         } else {
             JOptionPane.showMessageDialog(this, "Error al guardar la cancha.");
