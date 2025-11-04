@@ -1,15 +1,8 @@
 package com.gestor.negocio;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
-/**
- * (MODIFICADO)
- * Clase abstracta que define una reserva.
- * Ahora incluye 'idGrupoFija' para saber si pertenece a una serie.
- * (MODIFICADO OTRA VEZ) Método 'solapa' corregido.
- */
-public abstract class Reserva implements Serializable {
+public abstract class Reserva {
 
     protected int idReserva;
     protected LocalDateTime fechaHoraInicio;

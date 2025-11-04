@@ -1,9 +1,6 @@
 package com.gestor.negocio;
 
-
-import java.io.Serializable;
-
-public class Cliente implements Serializable {
+public class Cliente {
     private int idCliente;
     private String nombreCliente;
     private String telefono;

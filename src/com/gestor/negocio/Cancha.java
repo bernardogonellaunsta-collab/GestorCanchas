@@ -1,9 +1,6 @@
 package com.gestor.negocio;
     
-
-import java.io.Serializable;
-
-public class Cancha implements Serializable {
+public class Cancha {
     private int idCancha;
     private String nombre;
     private String deporte;

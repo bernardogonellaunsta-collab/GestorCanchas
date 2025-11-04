@@ -1,10 +1,8 @@
 package com.gestor.negocio;
 
-
-import java.io.Serializable;
 import java.time.*;
 
-public class HorarioLaboral implements Serializable {
+public class HorarioLaboral {
     private DayOfWeek diaDeLaSemana;
     private LocalTime horaApertura;
     private LocalTime horaCierre;
