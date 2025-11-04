@@ -879,14 +879,19 @@ public class MainFrame extends JFrame {
         Cancha cancha = (Cancha) cmbCanchaDisp.getSelectedItem();
         if (cancha == null) return;
         
-        // --- INICIO DE MODIFICACIÓN ---
-        // LocalDate fecha = parseFecha(ftfFechaDisp.getText()); // Reemplazado
         LocalDate fecha = parseDateChooser(jdcFechaDisp); // Lee del JDateChooser
         if (fecha == null) {
             JOptionPane.showMessageDialog(this, "Seleccione una fecha válida para consultar.");
             return;
         }
-        // --- FIN DE MODIFICACIÓN ---
+        
+        LocalDate hoy = LocalDate.now();
+        
+        // VALIDACION DE FECHA PASADA
+        if (fecha.isBefore(hoy)) {
+            JOptionPane.showMessageDialog(this, "No se puede seleccionar una fecha que ya pasó.", "Fecha Inválida", JOptionPane.WARNING_MESSAGE);
+            return; // Detiene el registro
+        }
         
         // Llama al DAO
         List<LocalTime> libres = reservaDAO.consultarDisponibilidad(cancha.getIdCancha(), fecha);
