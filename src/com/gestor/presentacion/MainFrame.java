@@ -10,7 +10,6 @@ import com.gestor.negocio.ReservaFija;
 import com.gestor.negocio.ReservaSimple;
 // Importar JDateChooser (si no está ya)
 import com.toedter.calendar.JDateChooser;
-import java.util.Date;
 import java.time.ZoneId;
 import java.util.Date; // Para interactuar con JDateChooser
 // --- FIN DE IMPORTACIONES MODIFICADAS ---
@@ -56,7 +55,7 @@ public class MainFrame extends JFrame {
     private final ReservaDAO reservaDAO;
 
     // ---- Contenedor principal ----
-    private JTabbedPane tabs;
+    private final JTabbedPane tabs;
 
     // ---- Reservas ----
     private JPanel panelReservas;
@@ -137,8 +136,6 @@ public class MainFrame extends JFrame {
     public DefaultTableModel modelClientes;
 
     // ---- Utiles ----
-    // F_FECHA ya no es necesario para parsear, pero se mantiene para F_FECHA_HORA_MOSTRAR
-    private static final DateTimeFormatter F_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter F_HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter F_FECHA_HORA_MOSTRAR
             = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
@@ -148,7 +145,6 @@ public class MainFrame extends JFrame {
             
     // Listas de deportes (centralizadas)
     private static final String[] DEPORTES = {"Fútbol", "Pádel", "Tenis", "Básquet"};
-    private static final String[] DEPORTES_PARA_FILTRO = {"Todos", "Fútbol", "Pádel", "Tenis", "Básquet"};
 
     public MainFrame() {
         setTitle("Gestor Deportivo");
@@ -239,7 +235,7 @@ public class MainFrame extends JFrame {
         txtIdReserva.setEnabled(false); */
         
         // Combo para filtrar deporte en Reservas
-        cmbDeporteReserva = new JComboBox<>(DEPORTES_PARA_FILTRO);
+        cmbDeporteReserva = new JComboBox<>(DEPORTES);
         cmbCancha = new JComboBox<>();
         
         // Agregar el listener para que el combo de deporte filtre el de cancha
@@ -247,14 +243,9 @@ public class MainFrame extends JFrame {
         
         cmbCliente = new JComboBox<>();
         
-        // --- INICIO DE MODIFICACIÓN ---
-        // ftfFecha = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
-        // ftfFecha.setColumns(8);
-        // ftfFecha.setText(LocalDate.now().format(F_FECHA));
         jdcFecha = new JDateChooser();
         jdcFecha.setDate(new Date()); // Valor por defecto: hoy
         jdcFecha.setPreferredSize(new Dimension(120, jdcFecha.getPreferredSize().height));
-        // --- FIN DE MODIFICACIÓN ---
 
         ftfHora = new JFormattedTextField(F_HORA.toFormat());
         ftfHora.setColumns(5);
@@ -274,16 +265,8 @@ public class MainFrame extends JFrame {
         // Instanciar los componentes (inputs y labels)
         cmbDiaSemana = new JComboBox<>(DayOfWeek.values());
         
-        // --- INICIO DE CÓDIGO NUEVO (REVERTIDO) ---
-        // Se eliminó el "Renderer" para mostrar días en español
-        // --- FIN DE CÓDIGO NUEVO (REVERTIDO) ---
-        
-        // --- INICIO DE MODIFICACIÓN ---
-        // ftfFechaFin  = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
-        // ftfFechaFin.setColumns(8);
         jdcFechaFin = new JDateChooser();
         jdcFechaFin.setPreferredSize(new Dimension(120, jdcFechaFin.getPreferredSize().height));
-        // --- FIN DE MODIFICACIÓN ---
 
         spDescuento  = new JSpinner(new SpinnerNumberModel(0.0, 0.0, 0.9, 0.05));
         
@@ -365,14 +348,9 @@ public class MainFrame extends JFrame {
 
         cmbCanchaDisp = new JComboBox<>();
         
-        // --- INICIO DE MODIFICACIÓN ---
-        // ftfFechaDisp  = new JFormattedTextField(F_FECHA.toFormat()); // Reemplazado
-        // ftfFechaDisp.setColumns(8);
-        // ftfFechaDisp.setText(LocalDate.now().format(F_FECHA));
         jdcFechaDisp = new JDateChooser();
         jdcFechaDisp.setDate(new Date()); // Valor por defecto: hoy
         jdcFechaDisp.setPreferredSize(new Dimension(120, jdcFechaDisp.getPreferredSize().height));
-        // --- FIN DE MODIFICACIÓN ---
 
         btnConsultarDisponibilidad = new JButton("Consultar");
 
@@ -573,8 +551,7 @@ public class MainFrame extends JFrame {
         
         // Itera sobre la lista MAESTRA de canchas (que está en memoria)
         for (Cancha c : canchas) {
-            boolean coincide = "Todos".equals(deporteSeleccionado) || 
-                               c.getDeporte().equalsIgnoreCase(deporteSeleccionado);
+            boolean coincide = c.getDeporte().equalsIgnoreCase(deporteSeleccionado);
             
             if (coincide) {
                 cmbCancha.addItem(c);
