@@ -13,7 +13,9 @@ public class ConexionDB {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
+    /*
+    ESTO NO SE USA AL FINAL
     static Connection getConexion() {
         throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
+    }*/ 
 }

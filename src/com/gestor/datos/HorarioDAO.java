@@ -8,21 +8,12 @@ import java.sql.SQLException;
 import java.time.DayOfWeek;
 import java.util.List;
 
-/**
- * (CORREGIDO)
- * Implementa la lógica de `obtenerHorario` que faltaba.
- * El error "UnsupportedOperationException" ha sido reemplazado
- * por la lógica SQL correcta.
- */
 public class HorarioDAO {
 
-    /**
-     * (IMPLEMENTADO)
-     * Obtiene el horario laboral (apertura, cierre, turno) para un día de la semana.
-     */
+    // Obtiene el horario laboral (apertura, cierre, turno) para un día de la semana.
+     
     public HorarioLaboral obtenerHorario(DayOfWeek dia) {
         
-        // --- INICIO DE LA IMPLEMENTACIÓN ---
         String sql = "SELECT * FROM horario_laboral WHERE dia_semana = ?";
         
         try (Connection cn = ConexionDB.conectar();
@@ -49,32 +40,14 @@ public class HorarioDAO {
         // Si no se encuentra un horario para ese día (o hay un error), devuelve null.
         // ReservaDAO está preparado para manejar esto (imprimirá "No hay horario laboral...").
         return null; 
-        // --- FIN DE LA IMPLEMENTACIÓN ---
-        
-        // La siguiente línea (que estaba en la línea 57) era la causa del error y ha sido eliminada:
-        // throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    /**
-     * (NO IMPLEMENTADO - Placeholder)
-     * Actualiza un horario en la BD.
-     */
     public void actualizarHorario(HorarioLaboral horario) {
-        // Esta función no es llamada por la aplicación principal todavía.
-        throw new UnsupportedOperationException("Not supported yet."); 
+        // Esta función todavía no funciona.
     }
 
-    /**
-     * (NO IMPLEMENTADO - Placeholder)
-     * Obtiene todos los horarios de la semana.
-     */
-    public List<HorarioLaboral> obtenerTodos() {
-        // Esta función no es llamada por la aplicación principal todavía.
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
+    //public List<HorarioLaboral> obtenerTodos() {};
 
-    HorarioLaboral obtenerHorarioPorDia(DayOfWeek dayOfWeek) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
-    }
+    // HorarioLaboral obtenerHorarioPorDia(DayOfWeek dayOfWeek) {}
 }
 

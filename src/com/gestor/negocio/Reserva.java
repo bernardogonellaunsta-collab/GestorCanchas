@@ -8,7 +8,7 @@ public abstract class Reserva {
     protected LocalDateTime fechaHoraInicio;
     protected Cancha cancha;
     protected Cliente cliente;
-    protected Integer idGrupoFija; // --- CAMBIO: Añadido este campo ---
+    protected Integer idGrupoFija; 
 
     public Reserva() {}
 

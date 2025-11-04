@@ -14,7 +14,7 @@ import java.sql.Statement;
  * Clase de utilidad para inicializar la base de datos.
  * Se encarga de conectarse al servidor MySQL y ejecutar el script
  * 'schema.sql' para crear la base de datos y las tablas si no existen.
- * (ACTUALIZADO) Ahora también puebla los horarios por defecto.
+ * Puebla los horarios por defecto.
  */
 public class SetUpDB {
 
@@ -43,15 +43,15 @@ public class SetUpDB {
                     st.execute(trimmedCommand);
                 }
             }
-            System.out.println("✅ Base de datos y tablas verificadas/creadas.");
+            System.out.println("Base de datos y tablas verificadas/creadas.");
             
             // 7. Poblar horarios por defecto si la tabla está vacía
             poblarHorariosPorDefecto(cn);
 
         } catch (SQLException e) {
-            System.err.println("❌ Error de SQL durante el setup: " + e.getMessage());
+            System.err.println("Error de SQL durante el setup: " + e.getMessage());
         } catch (IOException e) {
-            System.err.println("❌ Error: No se pudo leer el archivo 'schema.sql'. " + e.getMessage());
+            System.err.println("Error: No se pudo leer el archivo 'schema.sql'. " + e.getMessage());
             System.err.println("Asegúrate de que 'schema.sql' esté en la raíz del proyecto.");
         }
     }
@@ -78,12 +78,12 @@ public class SetUpDB {
                         psInsert.addBatch();
                     }
                     psInsert.executeBatch();
-                    System.out.println("✅ Horarios por defecto creados.");
+                    System.out.println("Horarios por defecto creados.");
                 }
             }
             
         } catch (SQLException e) {
-            System.err.println("❌ Error al poblar horarios por defecto: " + e.getMessage());
+            System.err.println("Error al poblar horarios por defecto: " + e.getMessage());
         }
     }
 }

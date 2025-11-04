@@ -17,7 +17,6 @@ public class CanchaDAO {
 
     /**
      * Obtiene todas las canchas de la base de datos.
-     * (Lógica extraída de cargarCanchasDesdeDB en MainFrame)
      * @return Una lista de objetos Cancha.
      */
     public List<Cancha> obtenerTodas() {
@@ -39,14 +38,12 @@ public class CanchaDAO {
             }
         } catch (SQLException e) {
             System.err.println("Error al cargar canchas: " + e.getMessage());
-            // En una app real, podríamos lanzar una excepción personalizada
         }
         return canchas;
     }
 
     /**
      * Agrega una nueva cancha a la base de datos.
-     * (Lógica extraída de onAgregarCancha en MainFrame)
      * @param cancha El objeto Cancha a guardar (el ID se ignora y se usa el autogenerado)
      * @return El ID autogenerado por la base de datos, o -1 si falló.
      */
@@ -76,7 +73,6 @@ public class CanchaDAO {
     }
 
     /**
-     * (NUEVO - IMPLEMENTADO)
      * Modifica una cancha existente en la base de datos.
      * @param cancha El objeto Cancha con los datos actualizados (incluyendo el ID)
      * @return true si la actualización fue exitosa, false si no
@@ -102,7 +98,6 @@ public class CanchaDAO {
     }
 
     /**
-     * (NUEVO - IMPLEMENTADO)
      * Elimina una cancha de la base de datos.
      * Fallará si la cancha tiene reservas asociadas (por restricción de Foreign Key).
      * @param idCancha El ID de la cancha a eliminar

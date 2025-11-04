@@ -161,7 +161,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (REFACTORIZADO)
      * Carga clientes desde el DAO y los pone en la GUI.
      */
     private void cargarClientesDesdeDB() {
@@ -289,10 +288,8 @@ public class MainFrame extends JFrame {
         addRow(form, gc, 2, new JLabel("Cancha:"), cmbCancha);
         addRow(form, gc, 3, new JLabel("Cliente:"), cmbCliente);
         
-        // --- INICIO DE MODIFICACIÓN ---
         // addRow(form, gc, 4, new JLabel("Fecha (dd/MM/yyyy):"), ftfFecha); // Reemplazado
         addRow(form, gc, 4, new JLabel("Fecha:"), jdcFecha); // Etiqueta simplificada
-        // --- FIN DE MODIFICACIÓN ---
         
         addRow(form, gc, 5, new JLabel("Hora (HH:mm):"), ftfHora);
         addRow(form, gc, 6, new JLabel("Duración (min):"), spDuracion);
@@ -304,10 +301,8 @@ public class MainFrame extends JFrame {
         // Usar los atributos de JLabel en addRow
         addRow(form, gc, 8, lblDiaSemana, cmbDiaSemana);
         
-        // --- INICIO DE MODIFICACIÓN ---
         // addRow(form, gc, 9, lblFechaFin, ftfFechaFin); // Reemplazado
         addRow(form, gc, 9, lblFechaFin, jdcFechaFin);
-        // --- FIN DE MODIFICACIÓN ---
         
         addRow(form, gc, 10, lblDescuento, spDescuento);
 
@@ -345,7 +340,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (MODIFICADO)
      * Reemplaza la JList por una JTable para mostrar la disponibilidad.
      * Reemplaza JFormattedTextField por JDateChooser.
      */
@@ -365,10 +359,8 @@ public class MainFrame extends JFrame {
 
         addRow(form, gc, 0, new JLabel("Cancha:"), cmbCanchaDisp);
         
-        // --- INICIO DE MODIFICACIÓN ---
         // addRow(form, gc, 1, new JLabel("Fecha (dd/MM/yyyy):"), ftfFechaDisp); // Reemplazado
         addRow(form, gc, 1, new JLabel("Fecha:"), jdcFechaDisp); // Etiqueta simplificada
-        // --- FIN DE MODIFICACIÓN ---
         
         addRow(form, gc, 2, new JLabel("Acción:"), btnConsultarDisponibilidad);
 
@@ -389,7 +381,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (MODIFICADO)
      * Construye el panel de Canchas, usando JComboBox para Deporte.
      */
     private void buildPanelCanchas() {
@@ -410,7 +401,6 @@ public class MainFrame extends JFrame {
         ftfPrecioHora.setColumns(8);
         btnAgregarCancha = new JButton("Agregar cancha");
         
-        // --- INICIO DE MODIFICACIÓN: Nuevos botones ---
         btnModificarCancha = new JButton("Modificar cancha");
         btnEliminarCancha = new JButton("Eliminar cancha");
         btnLimpiarCancha = new JButton("Limpiar");
@@ -420,7 +410,6 @@ public class MainFrame extends JFrame {
         acciones.add(btnModificarCancha);
         acciones.add(btnEliminarCancha);
         acciones.add(btnLimpiarCancha);
-        // --- FIN DE MODIFICACIÓN ---
 
         addRow(form, gc, 0, new JLabel("ID:"), txtIdCancha);
         addRow(form, gc, 1, new JLabel("Nombre:"), txtNombreCancha);
@@ -437,7 +426,7 @@ public class MainFrame extends JFrame {
         tblCanchas = new JTable(modelCanchas);
         panelCanchas.add(new JScrollPane(tblCanchas), BorderLayout.CENTER);
 
-        // --- INICIO DE MODIFICACIÓN: Listeners ---
+        // --- Listeners ---
         btnAgregarCancha.addActionListener(e -> onAgregarCancha());
         btnModificarCancha.addActionListener(e -> onModificarCancha());
         btnEliminarCancha.addActionListener(e -> onEliminarCancha());
@@ -453,7 +442,6 @@ public class MainFrame extends JFrame {
         
         // Estado inicial de los botones
         onLimpiarCancha();
-        // --- FIN DE MODIFICACIÓN ---
 
         tabs.addTab("Canchas", panelCanchas);
     }
@@ -463,7 +451,6 @@ public class MainFrame extends JFrame {
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gc = baseGC();
 
-        // --- INICIO DE MODIFICACIÓN ---
         txtIdCliente = new JTextField(8);
         txtIdCliente.setText("(autogenerado)");
         txtIdCliente.setEnabled(false);
@@ -485,7 +472,6 @@ public class MainFrame extends JFrame {
         addRow(form, gc, 1, new JLabel("Nombre:"), txtNombreCliente); // Fila 1: Nombre
         addRow(form, gc, 2, new JLabel("Teléfono:"), txtTelefono); // Fila 2: Teléfono
         addRow(form, gc, 3, new JLabel("Acción:"), acciones); // Fila 3: Panel de botones
-        // --- FIN DE MODIFICACIÓN ---
 
         panelClientes.add(form, BorderLayout.NORTH);
 
@@ -495,7 +481,7 @@ public class MainFrame extends JFrame {
         tblClientes = new JTable(modelClientes);
         panelClientes.add(new JScrollPane(tblClientes), BorderLayout.CENTER);
 
-        // --- INICIO DE MODIFICACIÓN: Listeners ---
+        // --- Listeners ---
         btnAgregarCliente.addActionListener(e -> onAgregarCliente());
         btnModificarCliente.addActionListener(e -> onModificarCliente());
         btnEliminarCliente.addActionListener(e -> onEliminarCliente());
@@ -511,7 +497,6 @@ public class MainFrame extends JFrame {
         
         // Estado inicial de los botones
         onLimpiarCliente();
-        // --- FIN DE MODIFICACIÓN ---
 
         tabs.addTab("Clientes", panelClientes);
     }
@@ -521,7 +506,6 @@ public class MainFrame extends JFrame {
     // -----------------------------------------------------------
 
     /**
-     * (NUEVO MÉTODO)
      * Muestra u oculta los campos específicos de Reserva Fija
      * basado en la selección del radio button.
      */
@@ -533,10 +517,8 @@ public class MainFrame extends JFrame {
         cmbDiaSemana.setVisible(esFija);
         
         lblFechaFin.setVisible(esFija);
-        // --- INICIO DE MODIFICACIÓN ---
         // ftfFechaFin.setVisible(esFija); // Reemplazado
         jdcFechaFin.setVisible(esFija);
-        // --- FIN DE MODIFICACIÓN ---
         
         lblDescuento.setVisible(esFija);
         spDescuento.setVisible(esFija);
@@ -580,12 +562,11 @@ public class MainFrame extends JFrame {
 
 
     /**
-     * (MODIFICADO)
      * Crea un objeto de negocio (Reserva) y lo pasa al DAO para guardarlo.
      * Ya no contiene SQL.
-     * (CORRECCIÓN) Llama a onListarReservasDia() después de una
+     * Llama a onListarReservasDia() después de una
      * inserción simple para resincronizar la tabla.
-     * (MODIFICADO) Lee la fecha desde JDateChooser.
+     * Lee la fecha desde JDateChooser.
      */
     private void onRegistrarReserva() {
         // 1. Obtener datos de la GUI
@@ -634,10 +615,8 @@ public class MainFrame extends JFrame {
         if (rbSimple.isSelected()) {
             nuevaReserva = new ReservaSimple(0, inicio, cancha, cliente, duracion);
         } else {
-            // --- INICIO DE MODIFICACIÓN ---
             // LocalDate fechaFin = parseFecha(ftfFechaFin.getText()); // Reemplazado
             LocalDate fechaFin = parseDateChooser(jdcFechaFin); // Lee del JDateChooser
-            // --- FIN DE MODIFICACIÓN ---
 
             if (fechaFin == null) {
                  JOptionPane.showMessageDialog(this, "La fecha de fin para la reserva fija no es válida.");
@@ -680,7 +659,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (NUEVO)
      * Carga las reservas de una fecha, las guarda en la lista interna
      * y puebla la tabla.
      */
@@ -701,7 +679,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (ACTUALIZADO)
      * Cancela una reserva usando el DAO.
      * Si la reserva es parte de un grupo, pregunta al usuario qué desea hacer.
      */
@@ -778,26 +755,22 @@ public class MainFrame extends JFrame {
 
 
     /**
-     * (MODIFICADO)
      * Lista las reservas de un día específico usando el DAO.
      * Lee la fecha desde JDateChooser.
      */
     private void onListarReservasDia() {
-        // --- INICIO DE MODIFICACIÓN ---
         // LocalDate fecha = parseFecha(ftfFecha.getText()); // Reemplazado
         LocalDate fecha = parseDateChooser(jdcFecha);
         if (fecha == null) {
             JOptionPane.showMessageDialog(this, "Seleccione una fecha válida para listar.");
             return;
         }
-        // --- FIN DE MODIFICACIÓN ---
         
         // Llama al método que puebla la lista interna y la tabla
         cargarReservasDelDia(fecha);
     }
 
     /**
-     * (MODIFICADO)
      * Calcula el costo (sin guardar) usando el objeto de negocio.
      * Lee la fecha desde JDateChooser.
      */
@@ -837,10 +810,7 @@ public class MainFrame extends JFrame {
             ReservaSimple tmp = new ReservaSimple(0, inicio, cancha, cliente, (int) spDuracion.getValue());
             costo = tmp.calcularCostoTotal();
         } else {
-            // --- INICIO DE MODIFICACIÓN ---
-            // LocalDate fechaFin = parseFecha(ftfFechaFin.getText()); // Reemplazado
             LocalDate fechaFin = parseDateChooser(jdcFechaFin); // Lee del JDateChooser
-            // --- FIN DE MODIFICACIÓN ---
 
             if (fechaFin == null) {
                 JOptionPane.showMessageDialog(this, "La fecha de fin no es válida para calcular el costo.");
@@ -855,7 +825,6 @@ public class MainFrame extends JFrame {
             tmp.setDuracionMinutos((int) spDuracion.getValue());
             
             // El costo total de una fija se calcula diferente
-            // (El DAO se encarga de calcular el costo total de la *serie*)
             // Aquí mostramos el costo *por turno*
             costo = tmp.calcularCostoTotal(); 
             
@@ -871,7 +840,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (MODIFICADO)
      * Consulta disponibilidad usando el DAO y puebla la JTable.
      * Lee la fecha desde JDateChooser.
      */
@@ -904,7 +872,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (MODIFICADO)
      * Agrega una cancha usando el DAO.
      */
     private void onAgregarCancha() {
@@ -943,7 +910,6 @@ public class MainFrame extends JFrame {
     }
     
     /**
-     * (NUEVO)
      * Se activa al hacer clic en una fila de la tabla de canchas.
      * Carga los datos de esa fila en el formulario.
      */
@@ -973,7 +939,6 @@ public class MainFrame extends JFrame {
     }
     
     /**
-     * (NUEVO)
      * Limpia el formulario de canchas y restaura el estado de los botones.
      */
     private void onLimpiarCancha() {
@@ -991,7 +956,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (NUEVO)
      * Llama al DAO para modificar la cancha seleccionada.
      */
     private void onModificarCancha() {
@@ -1032,7 +996,6 @@ public class MainFrame extends JFrame {
     }
     
     /**
-     * (NUEVO)
      * Llama al DAO para eliminar la cancha seleccionada.
      */
     private void onEliminarCancha() {
@@ -1075,9 +1038,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (REFACTORIZADO)
      * Agrega un cliente usando el DAO.
-     * (MODIFICADO) Llama a onLimpiarCliente al finalizar.
+     * Llama a onLimpiarCliente al finalizar.
      */
     private void onAgregarCliente() {
         String nom = txtNombreCliente.getText();
@@ -1101,18 +1063,14 @@ public class MainFrame extends JFrame {
             cmbCliente.addItem(cli);
             modelClientes.addRow(new Object[]{cli.getIdCliente(), cli.getNombreCliente(), cli.getTelefono()});
             
-            // txtNombreCliente.setText("");
-            // txtTelefono.setText("");
             onLimpiarCliente(); // Limpia el formulario
         } else {
             JOptionPane.showMessageDialog(this, "Error al guardar el cliente.");
         }
     }
        
-    // --- INICIO DE MÉTODOS NUEVOS PARA CLIENTES ---
     
     /**
-     * (NUEVO)
      * Se activa al hacer clic en una fila de la tabla de clientes.
      * Carga los datos de esa fila en el formulario.
      */
@@ -1139,7 +1097,6 @@ public class MainFrame extends JFrame {
     }
     
     /**
-     * (NUEVO)
      * Limpia el formulario de clientes y restaura el estado de los botones.
      */
     private void onLimpiarCliente() {
@@ -1156,7 +1113,6 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * (NUEVO)
      * Llama al DAO para modificar el cliente seleccionado.
      */
     private void onModificarCliente() {
@@ -1195,7 +1151,6 @@ public class MainFrame extends JFrame {
     }
     
     /**
-     * (NUEVO)
      * Llama al DAO para eliminar el cliente seleccionado.
      */
     private void onEliminarCliente() {
@@ -1237,7 +1192,6 @@ public class MainFrame extends JFrame {
         }
     }
     
-    // --- FIN DE MÉTODOS NUEVOS PARA CLIENTES ---
     
     // -----------------------------------------------------------
     // Utilidades de la GUI
@@ -1261,10 +1215,8 @@ public class MainFrame extends JFrame {
         panel.add(field, f);
     }
 
-    // --- MÉTODO parseFecha(String s) ELIMINADO ---
 
     /**
-     * (NUEVO MÉTODO)
      * Convierte la fecha de un JDateChooser a LocalDate.
      * @param chooser El componente JDateChooser
      * @return El LocalDate, o null si no se seleccionó fecha.

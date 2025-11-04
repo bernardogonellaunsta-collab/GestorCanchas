@@ -20,12 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * (ACTUALIZADO)
  * Clase DAO para manejar toda la lógica de persistencia de Reservas en MySQL.
  * Incluye lógica de transacciones y manejo de grupos para Reservas Fijas.
- * (MODIFICADO) Ahora usa HorarioDAO para la disponibilidad.
- * (CORREGIDO) Ahora `registrarReserva` valida conflictos para ReservaSimple.
- * (CORREGIDO) Ahora `registrarReserva` valida contra el horario laboral.
  */
 public class ReservaDAO {
 
@@ -37,17 +33,16 @@ public class ReservaDAO {
     }
     
     /**
-     * (CORREGIDO)
      * Método principal para registrar una reserva.
      * Ahora valida conflictos para AMBOS tipos de reserva.
-     * (NUEVA VALIDACIÓN) Valida contra el horario laboral.
+     * Valida contra el horario laboral.
      *
      * @param reserva El objeto de reserva (Simple o Fija)
      * @return El ID (si es Simple) o la cantidad de reservas (si es Fija). -1 si hay error.
      */
     public int registrarReserva(Reserva reserva) {
         
-        // --- INICIO DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
+        // --- VALIDACIÓN DE HORARIO LABORAL ---
         LocalDate fechaReserva = reserva.getFechaHoraInicio().toLocalDate();
         DayOfWeek dia = fechaReserva.getDayOfWeek();
         HorarioLaboral horario = horarioDAO.obtenerHorario(dia);
@@ -57,13 +52,11 @@ public class ReservaDAO {
             return -1; // Indica error (cerrado ese día)
         }
 
-        // --- INICIO DE CORRECCIÓN (Usar LocalDateTime) ---
         LocalDateTime inicioReservaDT = reserva.getFechaHoraInicio();
         LocalDateTime finReservaDT = reserva.getFechaHoraFin();
         
         LocalDateTime aperturaDT = LocalDateTime.of(fechaReserva, horario.getHoraApertura());
         LocalDateTime cierreDT = LocalDateTime.of(fechaReserva, horario.getHoraCierre());
-        // --- FIN DE CORRECCIÓN ---
 
         // Check 1: La hora de INICIO no puede ser antes de la apertura
         if (inicioReservaDT.isBefore(aperturaDT)) {
@@ -77,12 +70,10 @@ public class ReservaDAO {
             System.err.println("Error: El fin de la reserva (" + finReservaDT.toLocalTime() + " del " + finReservaDT.toLocalDate() + ") no puede ser después de la hora de cierre (" + horario.getHoraCierre() + " del " + fechaReserva + ").");
             return -1;
         }
-        // --- FIN DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
 
 
         if (reserva instanceof ReservaSimple) {
             
-            // --- INICIO DE CORRECCIÓN ---
             // 1. Convertir a lista para usar el validador de conflictos
             List<ReservaSimple> aChequear = new ArrayList<>();
             aChequear.add((ReservaSimple) reserva);
@@ -93,7 +84,6 @@ public class ReservaDAO {
                 System.err.println("Conflicto de disponibilidad detectado para reserva simple en: " + conflictos.get(0));
                 return -1; // Indica conflicto
             }
-            // --- FIN DE CORRECCIÓN ---
             
             // 3. Si no hay conflictos, registrar
             return registrarReservaSimple((ReservaSimple) reserva, null, null); // Sin transacción, sin grupo
@@ -212,7 +202,7 @@ public class ReservaDAO {
             reservasAGuardar.add(individual);
         }
 
-        // --- INICIO DE NUEVA VALIDACIÓN DE HORARIO LABORAL (PARA RESERVAS FIJAS) ---
+        // --- VALIDACIÓN DE HORARIO LABORAL (PARA RESERVAS FIJAS) ---
         // Se debe chequear cada ocurrencia generada
         for (ReservaSimple res : reservasAGuardar) {
             LocalDate fechaRes = res.getFechaHoraInicio().toLocalDate();
@@ -224,13 +214,11 @@ public class ReservaDAO {
                 return -1;
             }
             
-            // --- INICIO DE CORRECCIÓN (Usar LocalDateTime) ---
             LocalDateTime inicioReservaDT = res.getFechaHoraInicio();
             LocalDateTime finReservaDT = res.getFechaHoraFin();
 
             LocalDateTime aperturaDT = LocalDateTime.of(fechaRes, horarioRes.getHoraApertura());
             LocalDateTime cierreDT = LocalDateTime.of(fechaRes, horarioRes.getHoraCierre());
-            // --- FIN DE CORRECCIÓN ---
 
             if (inicioReservaDT.isBefore(aperturaDT)) {
                 System.err.println("Error en reserva fija: Una ocurrencia (" + inicioReservaDT.toLocalTime() + ") es antes de la apertura (" + aperturaDT.toLocalTime() + ").");
@@ -241,7 +229,6 @@ public class ReservaDAO {
                 return -1;
             }
         }
-        // --- FIN DE NUEVA VALIDACIÓN DE HORARIO LABORAL ---
 
         // 3. Validar conflictos ANTES de intentar guardar
         List<LocalDateTime> conflictos = consultarConflictos(reservasAGuardar);
@@ -445,9 +432,7 @@ public class ReservaDAO {
     }
 
     /**
-     * (MODIFICADO)
      * Consulta los horarios disponibles usando la tabla `horario_laboral`
-     * en lugar de valores fijos (8 a 23).
      *
      * @param idCancha El ID de la cancha
      * @param fecha La fecha a consultar

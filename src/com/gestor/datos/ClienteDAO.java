@@ -12,7 +12,6 @@ public class ClienteDAO {
 
     /**
      * Obtiene todos los clientes de la BD.
-     * (Esta es la lógica que estaba en cargarClientesDesdeDB de MainFrame)
      */
     public List<Cliente> obtenerTodos() {
         List<Cliente> clientes = new ArrayList<>();
@@ -39,7 +38,6 @@ public class ClienteDAO {
 
     /**
      * Agrega un nuevo cliente a la BD.
-     * (Esta es la lógica que estaba en onAgregarCliente de MainFrame)
      */
     public int agregarCliente(Cliente cliente) {
         String sql = "INSERT INTO cliente (nombre, telefono) VALUES (?, ?)";
@@ -65,7 +63,6 @@ public class ClienteDAO {
     }
     
     /**
-     * (NUEVO - IMPLEMENTADO)
      * Modifica un cliente existente en la base de datos.
      * @param cliente El objeto Cliente con los datos actualizados (incluyendo el ID)
      * @return true si la actualización fue exitosa, false si no
@@ -90,7 +87,6 @@ public class ClienteDAO {
     }
 
     /**
-     * (NUEVO - IMPLEMENTADO)
      * Elimina un cliente de la base de datos.
      * Fallará si el cliente tiene reservas asociadas (por restricción de Foreign Key).
      * @param idCliente El ID del cliente a eliminar

@@ -2,10 +2,6 @@ package com.gestor.negocio;
 
 import java.time.LocalDateTime;
 
-/**
- * (MODIFICADO)
- * Constructor actualizado.
- */
 public class ReservaSimple extends Reserva {
 
     private int duracionMinutos;
